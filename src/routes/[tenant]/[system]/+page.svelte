@@ -43,9 +43,12 @@
 	let systemMoverMode = $state(false);
 	let selectedConfiguration = $state<Set<TemporaryObject> | null>(null);
 
+	let showBackConfirmDialog = $state(false);
+
 	import { sidebarRefs, focusSidebarElement } from '$lib/index';
 	import { TemperatureManager } from '$lib/config/temperatureConfig';
 	import DbText from '$lib/i18n/DbText.svelte';
+	import { goto } from '$app/navigation';
 
 	function setRef(node: HTMLElement, code: string) {
 		sidebarRefs.set(code, node);
@@ -81,6 +84,27 @@
 		} else {
 			renderer?.setOpacity(1);
 		}
+	}
+
+	function handleBackClick() {
+		// Se non ci sono oggetti nella configurazione, naviga direttamente
+		if ($objects.length === 0) {
+			goto(`/${data.tenant}`);
+		} else {
+			// Altrimenti mostra il dialog di conferma
+			showBackConfirmDialog = true;
+		}
+	}
+
+	// Funzione per confermare e navigare indietro
+	function confirmBack() {
+		showBackConfirmDialog = false;
+		goto(`/${data.tenant}`);
+	}
+
+	// Funzione per annullare
+	function cancelBack() {
+		showBackConfirmDialog = false;
 	}
 
 	function toggleSystemMoverMode() {
@@ -269,10 +293,10 @@
 
 <main class="grid h-dvh grid-cols-layout grid-rows-layout gap-3 p-5">
 	<div class="row-span-3 flex flex-col gap-3">
-		<a href="/{data.tenant}" class="inline-flex">
-			<ArrowLeft class="translate-y-1" />
-			{$_('common.back')}
-		</a>
+	<button onclick={handleBackClick} class="inline-flex">
+		<ArrowLeft class="translate-y-1" />
+		{$_('common.back')}
+	</button>
 
 		{#if $objects.length === 0}
 			<span>{$_('home.noComponents')}</span>
@@ -443,5 +467,43 @@
 			askForLeds={$objects.some((o) => data.catalog[o.code].askForLeds)}
 		/>
 	{/if}
+	<!-- Dialog di conferma per il pulsante indietro -->
+	<Dialog.Root bind:open={showBackConfirmDialog}>
+		<Dialog.Portal>
+			<Dialog.Overlay
+				transition={fade}
+				transitionConfig={{ duration: 150 }}
+				class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+			/>
+			<Dialog.Content
+				transition={flyAndScale}
+				class="fixed left-[50%] top-[50%] z-50 w-full max-w-[94%] translate-x-[-50%] translate-y-[-50%] rounded bg-background p-5 shadow-popover outline-none lg:w-2/5"
+			>
+				<Dialog.Title class="flex w-full items-center text-left text-2xl font-bold">
+					Conferma uscita
+				</Dialog.Title>
+				<Separator.Root class="-mx-5 mb-3 mt-3 block h-px bg-muted" />
+
+				<Dialog.Description>
+					<p class="mb-6">Sei sicuro di voler tornare indietro? Perderai la configurazione attuale.</p>
+					
+					<div class="flex gap-3">
+						<button 
+							class="flex-1 text-center rounded-md transition-all shadow-btn active:scale-98 active:shadow-btn-active border border-gray-300 bg-white hover:bg-gray-100 py-2"
+							onclick={cancelBack}
+						>
+							{$_('common.cancel')}
+						</button>
+						<button 
+							class="flex-1 text-center rounded-md transition-all shadow-btn active:scale-98 active:shadow-btn-active bg-yellow-400 hover:bg-yellow-300 text-black py-2"
+							onclick={confirmBack}
+						>
+							Conferma
+						</button>
+					</div>
+				</Dialog.Description>
+			</Dialog.Content>
+		</Dialog.Portal>
+	</Dialog.Root>
 </main>
 <canvas class="absolute inset-0 -z-10 h-dvh w-full" bind:this={canvas}></canvas>
