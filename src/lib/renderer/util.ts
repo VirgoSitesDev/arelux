@@ -41,7 +41,7 @@ export function resizeCanvasToDisplaySize(renderer: ThreeRenderer, camera: Camer
 		camera.updateProjectionMatrix();
 	} else if (camera instanceof OrthographicCamera) {
 		const aspect = width / height;
-		const frustumSize = 1000;
+		const frustumSize = 3000;
 		camera.left = (frustumSize * aspect) / -2;
 		camera.right = (frustumSize * aspect) / 2;
 		camera.top = frustumSize / 2;
