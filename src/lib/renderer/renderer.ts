@@ -1035,9 +1035,7 @@ export class Renderer {
 			
 			this.#originalPositions.set(obj.id, obj.mesh.position.clone());
 		}
-		
-		this.frameObject(obj);
-		
+
 		return obj;
 	}
 
