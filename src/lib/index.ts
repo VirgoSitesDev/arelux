@@ -118,7 +118,11 @@ export async function finishEdit(
 		if (state.reference.typ === 'junction') {
 			const parentObj = renderer.getObjectById(state.reference.id);
 			if (parentObj) {
-				parentObj.attach(obj, state.reference.junction);
+				parentObj.attach(
+					obj, 
+					undefined,  
+					state.reference.junction
+				);
 			}
 		} else if (state.reference.typ === 'line') {
 			const parentObj = renderer.getObjectById(state.reference.id);
@@ -152,7 +156,6 @@ export async function finishEdit(
 		}),
 	);
 
-	// Controllo connettori automatici DOPO aver aggiunto l'oggetto
 	const junctions = obj.getJunctions();
 	for (let i = 0; i < junctions.length; i++) {
 		const connectedObj = junctions[i];
@@ -173,7 +176,6 @@ export async function finishEdit(
 					{ code: connectedSavedObj.code, family: parentFamily, system: page.data.catalog[connectedSavedObj.code]?.system || '' },
 					{ code: state.chosenItem, family: currentFamily, system: page.data.catalog[state.chosenItem]?.system || '' }
 				);
-				console.log(connectorCode);
 				
 				if (connectorCode) {
 					objects.update((objs) =>

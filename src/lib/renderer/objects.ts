@@ -199,13 +199,11 @@ export class TemporaryObject {
 			const profileDir = tan.clone().normalize();
 			const isCurvedProfile = parentObject.getCatalogEntry().code.includes('C');
 
-			// 🔧 NUOVO: Analizza la direzione principale della line junction
 			const lineJunct = parentObject.getCatalogEntry().line_juncts[parentJunctionId];
 			const lineDirection = new Vector3()
 				.subVectors(lineJunct.point2, lineJunct.point1)
 				.normalize();
 
-			// Determina se è principalmente verticale (componente Y dominante)
 			const isVerticalProfile = Math.abs(lineDirection.y) > Math.abs(lineDirection.x) && 
 									Math.abs(lineDirection.y) > Math.abs(lineDirection.z);
 
@@ -214,15 +212,13 @@ export class TemporaryObject {
 			if (isVerticalProfile) {
 				angleZ = lineDirection.y > 0 ? Math.PI / 2 : -Math.PI / 2;
 				angleY = 3 * Math.PI / 2;
-    
-				// Calcola rotazione Y per seguire eventuali componenti X/Z
+
 				if (Math.abs(lineDirection.x) > 0.01 || Math.abs(lineDirection.z) > 0.01) {
 					angleY += Math.atan2(lineDirection.x, lineDirection.z);
 				}
 				
 				this.mesh.rotation.set(angleX, angleY || 0, angleZ);
 			} else {
-				// Logica originale per profili orizzontali
 				angleY = Math.atan2(profileDir.x, profileDir.z) + (isCurvedProfile ? Math.PI : Math.PI / 2);
 				this.mesh.rotation.set(0, angleY, 0);
 			}
@@ -263,66 +259,79 @@ export class TemporaryObject {
 		this.#state.getScene().add(this.mesh);
 	}
 
-	attach(other: TemporaryObject, junctionId?: number, dontFrame?: true): string {
-		if (junctionId) junctionId %= other.#junctions.length;
+	attach(other: TemporaryObject, otherJunctionId?: number, thisJunctionId?: number, dontFrame?: true): string {
+		if (otherJunctionId !== undefined) otherJunctionId %= other.#junctions.length;
+		if (thisJunctionId !== undefined) thisJunctionId %= this.#junctions.length;
 
 		if (!this.mesh || !other.mesh)
 			throw new Error('Can only attach if both objects have a mesh attached');
 		
 		if (other.#junctions.concat(other.#lineJunctions).some((j) => j !== null))
 			throw new Error('Can only attach if not already attached to something');
-		if (junctionId !== undefined && other.#junctions[junctionId] !== null)
+			
+		if (otherJunctionId !== undefined && other.#junctions[otherJunctionId] !== null)
 			throw new Error("Specified a junction id, but it's already occupied");
+			
+		if (thisJunctionId !== undefined && this.#junctions[thisJunctionId] !== null)
+			throw new Error("Specified this junction id, but it's already occupied");
 
-		const thisCandidates = this.nullJunctions();
-		const otherCandidates = junctionId !== undefined ? [junctionId] : other.nullJunctions();
-		
-		console.log('🎯 Junction search:', {
-			thisCandidates,
-			otherCandidates,
-			requestedSpecific: junctionId !== undefined
-		});
+		const thisCandidates = thisJunctionId !== undefined ? [thisJunctionId] : this.nullJunctions();
+		const otherCandidates = otherJunctionId !== undefined ? [otherJunctionId] : other.nullJunctions();
 
-		let thisJunctId = null;
-		let otherJunctId = null;
-		
-		// Se l'utente ha specificato una giunzione particolare, rispetta quella scelta
-		if (junctionId !== undefined) {
-			// Trova la migliore giunzione di questo oggetto per la giunzione specificata dell'altro oggetto
+
+		let finalThisJunctId = null;
+		let finalOtherJunctId = null;
+
+		if (thisJunctionId !== undefined) {
 			let bestAngleDiff = Infinity;
 			const normalizeAngle = (angle: number) => ((angle % 360) + 360) % 360;
 			
-			const otherGroup = other.getCatalogEntry().juncts[junctionId].group;
+			const thisGroup = this.getCatalogEntry().juncts[thisJunctionId].group;
+			
+			for (const otherCandidate of otherCandidates) {
+				const otherGroup = other.getCatalogEntry().juncts[otherCandidate].group;
+				
+				if (thisGroup === otherGroup) {
+					const thisAngle = this.getCatalogEntry().juncts[thisJunctionId].angle + this.#angle;
+					const otherAngle = other.getCatalogEntry().juncts[otherCandidate].angle + other.#angle;
+
+					const expectedOtherAngle = normalizeAngle(thisAngle + 180);
+					const angleDiff = Math.abs(normalizeAngle(otherAngle) - expectedOtherAngle);
+					const wrappedAngleDiff = Math.min(angleDiff, 360 - angleDiff);
+
+					if (wrappedAngleDiff < bestAngleDiff) {
+						bestAngleDiff = wrappedAngleDiff;
+						finalThisJunctId = thisJunctionId;
+						finalOtherJunctId = otherCandidate;
+					}
+				}
+			}
+		}
+		else if (otherJunctionId !== undefined) {
+			let bestAngleDiff = Infinity;
+			const normalizeAngle = (angle: number) => ((angle % 360) + 360) % 360;
+			
+			const otherGroup = other.getCatalogEntry().juncts[otherJunctionId].group;
 			
 			for (const thisCandidate of thisCandidates) {
 				const thisGroup = this.getCatalogEntry().juncts[thisCandidate].group;
 				
 				if (thisGroup === otherGroup) {
 					const thisAngle = this.getCatalogEntry().juncts[thisCandidate].angle + this.#angle;
-					const otherAngle = other.getCatalogEntry().juncts[junctionId].angle + other.#angle;
+					const otherAngle = other.getCatalogEntry().juncts[otherJunctionId].angle + other.#angle;
 					
-					// L'angolo ideale per l'attacco è quello opposto (differenza di 180°)
 					const expectedThisAngle = normalizeAngle(otherAngle + 180);
 					const angleDiff = Math.abs(normalizeAngle(thisAngle) - expectedThisAngle);
 					const wrappedAngleDiff = Math.min(angleDiff, 360 - angleDiff);
-					
-					console.log('🔄 Angle analysis (specific junction):', {
-						thisCandidate,
-						specifiedOtherJunction: junctionId,
-						thisAngle: normalizeAngle(thisAngle),
-						otherAngle: normalizeAngle(otherAngle),
-						wrappedAngleDiff
-					});
-					
+
 					if (wrappedAngleDiff < bestAngleDiff) {
 						bestAngleDiff = wrappedAngleDiff;
-						thisJunctId = thisCandidate;
-						otherJunctId = junctionId;
+						finalThisJunctId = thisCandidate;
+						finalOtherJunctId = otherJunctionId;
 					}
 				}
 			}
 		} else {
-			// Modalità automatica: trova la migliore combinazione possibile
 			let bestAngleDiff = Infinity;
 			const normalizeAngle = (angle: number) => ((angle % 360) + 360) % 360;
 			
@@ -330,15 +339,7 @@ export class TemporaryObject {
 				for (const otherCandidate of otherCandidates) {
 					const thisGroup = this.getCatalogEntry().juncts[thisCandidate].group;
 					const otherGroup = other.getCatalogEntry().juncts[otherCandidate].group;
-					
-					console.log('🔍 Checking compatibility:', {
-						thisCandidate,
-						otherCandidate,
-						thisGroup,
-						otherGroup,
-						compatible: thisGroup === otherGroup
-					});
-					
+
 					if (thisGroup === otherGroup) {
 						const thisAngle = this.getCatalogEntry().juncts[thisCandidate].angle + this.#angle;
 						const otherAngle = other.getCatalogEntry().juncts[otherCandidate].angle + other.#angle;
@@ -346,39 +347,25 @@ export class TemporaryObject {
 						const expectedThisAngle = normalizeAngle(otherAngle + 180);
 						const angleDiff = Math.abs(normalizeAngle(thisAngle) - expectedThisAngle);
 						const wrappedAngleDiff = Math.min(angleDiff, 360 - angleDiff);
-						
-						console.log('🔄 Angle analysis (auto mode):', {
-							thisCandidate,
-							otherCandidate,
-							thisAngle: normalizeAngle(thisAngle),
-							otherAngle: normalizeAngle(otherAngle),
-							wrappedAngleDiff
-						});
-						
+
 						if (wrappedAngleDiff < bestAngleDiff) {
 							bestAngleDiff = wrappedAngleDiff;
-							thisJunctId = thisCandidate;
-							otherJunctId = otherCandidate;
-							
-							console.log('✅ New best match found:', { 
-								thisJunctId, 
-								otherJunctId, 
-								angleDiff: wrappedAngleDiff 
-							});
+							finalThisJunctId = thisCandidate;
+							finalOtherJunctId = otherCandidate;
 						}
 					}
 				}
 			}
 		}
 		
-		if (thisJunctId === null || otherJunctId === null)
+		if (finalThisJunctId === null || finalOtherJunctId === null)
 			throw new Error('No compatible junctions found');
 
-		this.#junctions[thisJunctId] = other;
-		other.#junctions[otherJunctId] = this;
+		this.#junctions[finalThisJunctId] = other;
+		other.#junctions[finalOtherJunctId] = this;
 
-		const j1 = this.#catalogEntry.juncts[thisJunctId];
-		const j2 = other.#catalogEntry.juncts[otherJunctId];
+		const j1 = this.#catalogEntry.juncts[finalThisJunctId];
+		const j2 = other.#catalogEntry.juncts[finalOtherJunctId];
 		const pos1 = this.mesh.localToWorld(new Vector3().copy(j1));
 		const pos2 = other.mesh.localToWorld(new Vector3().copy(j2));
 
@@ -529,31 +516,26 @@ export class TemporaryObject {
 			other.mesh.rotation.set(0, 0, 0);
 			const profileDir = tan.clone().normalize();
 			const isCurvedProfile = this.getCatalogEntry().code.includes('C');
-			
-			// 🔧 NUOVO: Analizza la direzione principale della line junction
+
 			const lineJunct = this.getCatalogEntry().line_juncts[0];
 			const lineDirection = new Vector3()
 				.subVectors(lineJunct.point2, lineJunct.point1)
 				.normalize();
-			
-			// Determina se è principalmente verticale (componente Y dominante)
+
 			const isVerticalProfile = Math.abs(lineDirection.y) > Math.abs(lineDirection.x) && 
 									 Math.abs(lineDirection.y) > Math.abs(lineDirection.z);
 			
 			let angleY, angleX = 0, angleZ = 0;
 			
 			if (isVerticalProfile) {
-				// Orienta seguendo la tangente completa (3D)
 				angleZ = lineDirection.y > 0 ? Math.PI / 2 : -Math.PI / 2;
 				angleY = 3 * Math.PI / 2;
-        
-        		// Calcola rotazione Y per seguire eventuali componenti X/Z
+
 				if (Math.abs(lineDirection.x) > 0.01 || Math.abs(lineDirection.z) > 0.01) {
 					angleY += Math.atan2(lineDirection.x, lineDirection.z);
 				}
 				other.mesh.rotation.set(angleX, angleY, angleZ);
 			} else {
-				// Logica originale per profili orizzontali
 				angleY = Math.atan2(profileDir.x, profileDir.z) + (isCurvedProfile ? Math.PI : Math.PI / 2);
 				other.mesh.rotation.set(0, angleY, 0);
 			}
@@ -619,7 +601,12 @@ export class TemporaryObject {
 		this.detach(other);
 
 		const newJunctId = (thisJunctId + 1) % this.#junctions.length;
-		other.attach(this, newJunctId, true);
+		other.attach(
+			this, 
+			newJunctId,
+			otherJunctId,
+			true
+		);
 	}
 
 	setOpacity(opacity: number) {

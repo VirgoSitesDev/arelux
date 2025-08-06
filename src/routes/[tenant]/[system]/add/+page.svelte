@@ -57,12 +57,10 @@
 		return TemperatureManager.getEnhancedCatalog(data.catalog);
 	}
 
-	// Nuova funzione helper per gestire la selezione iniziale
 	function getDefaultItemForFamily(family: Family): any {
 		const enhancedFamily = TemperatureManager.getEnhancedFamily(family);
 		
 		if (hasTemperatureVariants(enhancedFamily)) {
-			// Prioritizza WW se disponibile, altrimenti il primo della lista
 			const wwItem = enhancedFamily.items.find(i => i.code.includes('WW'));
 			if (wwItem) {
 				return wwItem;
@@ -91,12 +89,10 @@
 
 	let enhancedCatalog = $derived(getEnhancedCatalog());
 
-	// Nuovi state per le sottofamiglie
 	let selectedSubfamily: LightSubfamily | undefined = $state();
 	let selectedPower: { baseModel: string; power: number; sampleCode: string } | undefined = $state();
 	let showPowerPanel = $state(false);
 
-	// Nuovo stato per le famiglie luci quando mode === "Luci"
 	let lightFamilies = $derived(() => {
 		if (mode !== 'Luci') return [];
 		
@@ -112,7 +108,6 @@
 				const subfamiliesMap = extractSubfamilies(family, enhancedCatalog);
 				
 				for (const [code, subfamily] of subfamiliesMap) {
-					// Aggiorna il displayName con la traduzione
 					subfamily.displayName = getSubfamilyName(code, $_);
 					
 					if (allSubfamilies.has(code)) {
@@ -133,7 +128,6 @@
 		return sortSubfamilies(Array.from(allSubfamilies.values()));
 	});
 
-	// Funzione per ottenere le sottofamiglie quando una famiglia è selezionata
 	const lightSubfamilies = $derived(() => {
 		if (!chosenFamily) return [];
 		const family = data.families[chosenFamily];
@@ -141,8 +135,7 @@
 		
 		const subfamiliesMap = extractSubfamilies(family, enhancedCatalog);
 		const subfamilies = Array.from(subfamiliesMap.values());
-		
-		// Aggiungi traduzioni
+
 		subfamilies.forEach(subfamily => {
 			subfamily.displayName = getSubfamilyName(subfamily.code, $_);
 		});
@@ -150,7 +143,6 @@
 		return sortSubfamilies(subfamilies);
 	});
 
-	// Resetta la selezione quando cambia la famiglia o il mode
 	$effect(() => {
 		if (chosenFamily || mode) {
 			selectedSubfamily = undefined;
@@ -174,7 +166,6 @@
 			renderer?.handles.setVisible(false);
 			renderer?.setOpacity(1);
 		} else {
-			// Per famiglie con sottofamiglie o mode Luci, mostra handles solo dopo selezione potenza
 			if (lightSubfamilies().length > 0 || (mode === 'Luci' && lightFamilies().length > 0)) {
 				if (selectedPower) {
 					renderer?.handles.selectObject(selectedPower.sampleCode).setVisible(true);
@@ -189,7 +180,7 @@
 				let reference: typeof page.state.reference = {
 					typ: 'junction',
 					id: handle.other.id,
-					junction: handle.selectedJunctId,
+					junction: handle.otherJunctId,
 				};
 
 				if ((handle as LineHandleMesh).isLineHandle) {
@@ -205,30 +196,24 @@
 					};
 				}
 
-				// Se abbiamo sottofamiglie, usa l'item selezionato tramite potenza
 				let chosenItem;
 				if (mode === 'Luci' && selectedPower) {
-					// Nel mode Luci, usa direttamente il sampleCode della potenza selezionata
 					chosenItem = selectedPower.sampleCode;
 				} else if (chosenFamily && selectedPower && selectedSubfamily) {
-					// Per famiglie singole con sottofamiglie
 					const targetItem = data.families[chosenFamily].items.find(
 						item => item.code.startsWith(selectedPower!.baseModel) && 
 						       item.code.includes(selectedSubfamily!.code)
 					);
 					chosenItem = targetItem?.code || data.families[chosenFamily].items[0].code;
 				} else if (chosenFamily) {
-					// Famiglia normale senza sottofamiglie
 					chosenItem = data.families[chosenFamily].items[0].code;
 				} else {
 					console.error('No chosen item found');
 					return;
 				}
 
-				// Trova la famiglia corretta per l'item scelto
 				let familyForItem = chosenFamily;
 				if (mode === 'Luci' && !chosenFamily) {
-					// Trova la famiglia che contiene questo item
 					for (const [famCode, fam] of Object.entries(data.families)) {
 						if (fam.items.some(i => i.code === chosenItem)) {
 							familyForItem = famCode;
@@ -285,7 +270,11 @@
 
 				if (page.state.reference) {
 					if (page.state.reference.typ === 'junction') {
-						renderer?.getObjectById(page.state.reference.id)?.attach(o, page.state.reference.junction);
+						renderer?.getObjectById(page.state.reference.id)?.attach(
+							o, 
+							undefined,
+							page.state.reference.junction
+						);
 					} else {
 						renderer?.getObjectById(page.state.reference.id)?.attachLine(o, page.state.reference.pos);
 					}
