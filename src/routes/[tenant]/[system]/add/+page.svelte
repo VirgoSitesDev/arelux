@@ -186,6 +186,12 @@
 			}
 			
 			renderer?.setClickCallback((handle) => {
+				console.log('👆 Handle clicked:', {
+					handleType: (handle as LineHandleMesh).isLineHandle ? 'line' : 'junction',
+					otherObjectId: handle.other.id,
+					otherJunctId: handle.otherJunctId,
+					selectedJunctId: handle.selectedJunctId
+				});
 				let reference: typeof page.state.reference = {
 					typ: 'junction',
 					id: handle.other.id,
@@ -264,6 +270,14 @@
 			renderer?.setOpacity(0.2);
 
 			renderer?.addObject(page.state.chosenItem).then((o) => {
+				console.log('🏗️ Object created:', {
+					code: page.state.chosenItem,
+					junctions: o.getCatalogEntry().juncts.map((j, index) => ({
+						index,
+						position: j,
+						group: j.group
+					}))
+				});
 				if (junctionId !== undefined) o.markJunction(junctionId);
 
 				if (page.state.isCustomLength && page.state.length) {
@@ -285,7 +299,7 @@
 
 				if (page.state.reference) {
 					if (page.state.reference.typ === 'junction') {
-						renderer?.getObjectById(page.state.reference.id)?.attach(o);
+						renderer?.getObjectById(page.state.reference.id)?.attach(o, page.state.reference.junction);
 					} else {
 						renderer?.getObjectById(page.state.reference.id)?.attachLine(o, page.state.reference.pos);
 					}
@@ -635,6 +649,10 @@
 								isCustomLength: page.state.isCustomLength,
 								led: page.state.led,
 							};
+							console.log('🔥 About to call finishEdit with:', {
+								pageStateReference: page.state.reference,
+								stateToPass: stateToPass
+							});
 							
 							finishEdit(rend, oldTemporary, group, stateToPass);
 						} else {

@@ -176,7 +176,7 @@
 		generateProfilesPDF();
 	}
 
-	function generateProfilesPDF() {
+function generateProfilesPDF() {
     import('jspdf').then(({ jsPDF }) => {
         const pdf = new jsPDF({
             orientation: 'landscape',
@@ -233,7 +233,6 @@
 					}
 				}
                 const isCurved = (distanceFromMid > 0.01) && (familyAngle > 0);
-				console.log(isCurved);
 
                 let curveAngle = 0;
                 let curveRadius = 0;

@@ -276,6 +276,11 @@ export class TemporaryObject {
 	
 		const thisCandidates = this.nullJunctions();
 		const otherCandidates = junctionId !== undefined ? [junctionId] : other.nullJunctions();
+		console.log('🎯 Junction search:', {
+			thisCandidates,
+			otherCandidates,
+			requestedSpecific: junctionId !== undefined
+		});
 
 		let thisJunctId = null;
 		let otherJunctId = null;
@@ -283,9 +288,17 @@ export class TemporaryObject {
 			for (const otherCandidate of otherCandidates) {
 				const thisGroup = this.getCatalogEntry().juncts[thisCandidate].group;
 				const otherGroup = other.getCatalogEntry().juncts[otherCandidate].group;
+				console.log('🔍 Checking compatibility:', {
+					thisCandidate,
+					otherCandidate,
+					thisGroup,
+					otherGroup,
+					compatible: thisGroup === otherGroup
+				});
 				if (thisGroup === otherGroup) {
 					thisJunctId = thisCandidate;
 					otherJunctId = otherCandidate;
+					console.log('✅ Match found:', { thisJunctId, otherJunctId });
 					break;
 				}
 			}

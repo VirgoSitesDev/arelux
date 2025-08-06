@@ -113,10 +113,17 @@ export async function finishEdit(
 	const isAlreadyAttached = obj.getJunctions().some(j => j !== null) || 
 							obj.getLineJunctions().some(j => j !== null);
 
-	if (state.reference && !isAlreadyAttached) {		
+
+	if (state.reference && !isAlreadyAttached) {	
+		console.log('📎 Entering attachment logic!');
 		if (state.reference.typ === 'junction') {
 			const parentObj = renderer.getObjectById(state.reference.id);
 			if (parentObj) {
+				console.log('🚀 About to call attach:', {
+					parentId: parentObj.id,
+					childId: obj.id,
+					junctionToUse: state.reference.junction
+				});
 				parentObj.attach(obj, state.reference.junction);
 			}
 		} else if (state.reference.typ === 'line') {
