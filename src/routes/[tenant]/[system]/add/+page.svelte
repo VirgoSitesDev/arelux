@@ -186,16 +186,10 @@
 			}
 			
 			renderer?.setClickCallback((handle) => {
-				console.log('👆 Handle clicked:', {
-					handleType: (handle as LineHandleMesh).isLineHandle ? 'line' : 'junction',
-					otherObjectId: handle.other.id,
-					otherJunctId: handle.otherJunctId,
-					selectedJunctId: handle.selectedJunctId
-				});
 				let reference: typeof page.state.reference = {
 					typ: 'junction',
 					id: handle.other.id,
-					junction: handle.otherJunctId,
+					junction: handle.selectedJunctId,
 				};
 
 				if ((handle as LineHandleMesh).isLineHandle) {
@@ -270,14 +264,6 @@
 			renderer?.setOpacity(0.2);
 
 			renderer?.addObject(page.state.chosenItem).then((o) => {
-				console.log('🏗️ Object created:', {
-					code: page.state.chosenItem,
-					junctions: o.getCatalogEntry().juncts.map((j, index) => ({
-						index,
-						position: j,
-						group: j.group
-					}))
-				});
 				if (junctionId !== undefined) o.markJunction(junctionId);
 
 				if (page.state.isCustomLength && page.state.length) {
@@ -649,10 +635,6 @@
 								isCustomLength: page.state.isCustomLength,
 								led: page.state.led,
 							};
-							console.log('🔥 About to call finishEdit with:', {
-								pageStateReference: page.state.reference,
-								stateToPass: stateToPass
-							});
 							
 							finishEdit(rend, oldTemporary, group, stateToPass);
 						} else {
@@ -852,7 +834,6 @@
 						{family}
 						allowCustomLength={family.system !== "XFree S"}
 						onsubmit={(objectCode, length, isCustom) => {
-							console.log('🔍 ConfigLength onsubmit:', { objectCode, length, isCustom });
 							configLength = length;
 							
 							replaceState('', {

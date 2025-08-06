@@ -263,9 +263,11 @@ export class TemporaryObject {
 		this.#state.getScene().add(this.mesh);
 	}
 
+// In src/lib/renderer/objects.ts, sostituisci il metodo attach() con questa versione migliorata:
+
 	attach(other: TemporaryObject, junctionId?: number, dontFrame?: true): string {
 		if (junctionId) junctionId %= other.#junctions.length;
-	
+
 		if (!this.mesh || !other.mesh)
 			throw new Error('Can only attach if both objects have a mesh attached');
 		
@@ -273,67 +275,96 @@ export class TemporaryObject {
 			throw new Error('Can only attach if not already attached to something');
 		if (junctionId !== undefined && other.#junctions[junctionId] !== null)
 			throw new Error("Specified a junction id, but it's already occupied");
-	
+
 		const thisCandidates = this.nullJunctions();
 		const otherCandidates = junctionId !== undefined ? [junctionId] : other.nullJunctions();
-		console.log('🎯 Junction search:', {
-			thisCandidates,
-			otherCandidates,
-			requestedSpecific: junctionId !== undefined
-		});
 
 		let thisJunctId = null;
 		let otherJunctId = null;
-		for (const thisCandidate of thisCandidates) {
-			for (const otherCandidate of otherCandidates) {
+		
+		// Se l'utente ha specificato una giunzione particolare, rispetta quella scelta
+		if (junctionId !== undefined) {
+			// Trova la migliore giunzione di questo oggetto per la giunzione specificata dell'altro oggetto
+			let bestAngleDiff = Infinity;
+			const normalizeAngle = (angle: number) => ((angle % 360) + 360) % 360;
+			
+			const otherGroup = other.getCatalogEntry().juncts[junctionId].group;
+			
+			for (const thisCandidate of thisCandidates) {
 				const thisGroup = this.getCatalogEntry().juncts[thisCandidate].group;
-				const otherGroup = other.getCatalogEntry().juncts[otherCandidate].group;
-				console.log('🔍 Checking compatibility:', {
-					thisCandidate,
-					otherCandidate,
-					thisGroup,
-					otherGroup,
-					compatible: thisGroup === otherGroup
-				});
+				
 				if (thisGroup === otherGroup) {
-					thisJunctId = thisCandidate;
-					otherJunctId = otherCandidate;
-					console.log('✅ Match found:', { thisJunctId, otherJunctId });
-					break;
+					const thisAngle = this.getCatalogEntry().juncts[thisCandidate].angle + this.#angle;
+					const otherAngle = other.getCatalogEntry().juncts[junctionId].angle + other.#angle;
+					
+					// L'angolo ideale per l'attacco è quello opposto (differenza di 180°)
+					const expectedThisAngle = normalizeAngle(otherAngle + 180);
+					const angleDiff = Math.abs(normalizeAngle(thisAngle) - expectedThisAngle);
+					const wrappedAngleDiff = Math.min(angleDiff, 360 - angleDiff);
+					
+					if (wrappedAngleDiff < bestAngleDiff) {
+						bestAngleDiff = wrappedAngleDiff;
+						thisJunctId = thisCandidate;
+						otherJunctId = junctionId;
+					}
 				}
 			}
-			if (thisJunctId !== null) break;
+		} else {
+			// Modalità automatica: trova la migliore combinazione possibile
+			let bestAngleDiff = Infinity;
+			const normalizeAngle = (angle: number) => ((angle % 360) + 360) % 360;
+			
+			for (const thisCandidate of thisCandidates) {
+				for (const otherCandidate of otherCandidates) {
+					const thisGroup = this.getCatalogEntry().juncts[thisCandidate].group;
+					const otherGroup = other.getCatalogEntry().juncts[otherCandidate].group;
+					
+					if (thisGroup === otherGroup) {
+						const thisAngle = this.getCatalogEntry().juncts[thisCandidate].angle + this.#angle;
+						const otherAngle = other.getCatalogEntry().juncts[otherCandidate].angle + other.#angle;
+						
+						const expectedThisAngle = normalizeAngle(otherAngle + 180);
+						const angleDiff = Math.abs(normalizeAngle(thisAngle) - expectedThisAngle);
+						const wrappedAngleDiff = Math.min(angleDiff, 360 - angleDiff);
+						
+						if (wrappedAngleDiff < bestAngleDiff) {
+							bestAngleDiff = wrappedAngleDiff;
+							thisJunctId = thisCandidate;
+							otherJunctId = otherCandidate;
+						}
+					}
+				}
+			}
 		}
-		
 		
 		if (thisJunctId === null || otherJunctId === null)
 			throw new Error('No compatible junctions found');
-	
+
 		this.#junctions[thisJunctId] = other;
 		other.#junctions[otherJunctId] = this;
-	
+
 		const j1 = this.#catalogEntry.juncts[thisJunctId];
 		const j2 = other.#catalogEntry.juncts[otherJunctId];
 		const pos1 = this.mesh.localToWorld(new Vector3().copy(j1));
 		const pos2 = other.mesh.localToWorld(new Vector3().copy(j2));
-	
+
 		const canonicalize = (angle: number) => ((angle % 360) + 360) % 360;
 		const rotate =
 			canonicalize(j2.angle + other.#angle + 180) - canonicalize(j1.angle + this.#angle);
 		other.mesh.rotateY(rotate * DEG2RAD);
 		other.#angle -= rotate;
-	
+
 		other.#angle = canonicalize(other.#angle);
 		this.#angle = canonicalize(this.#angle);
-	
+
 		const pos2Updated = other.mesh.localToWorld(new Vector3().copy(j2));
-	
+
 		other.mesh.position.copy({
 			x: other.mesh.position.x + pos1.x - pos2Updated.x,
 			y: other.mesh.position.y + pos1.y - pos2Updated.y,
 			z: other.mesh.position.z + pos1.z - pos2Updated.z,
 		});
-	
+
 		if (!dontFrame && this.#junctions.filter(j => j !== null).length <= 1) {
 			this.#state.frameObject(other);
 		}

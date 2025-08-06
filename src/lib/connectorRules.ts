@@ -5,9 +5,6 @@ export function getRequiredConnector4Family(
     obj2: { code: string; family: string, system: string }
 ): string | null {
 
-    console.log(obj1.system);
-    console.log(obj2.system);
-
     const isProfile1 = obj1.family.includes("Profili");
     const isProfile2 = obj2.family.includes("Profili");
 
