@@ -263,8 +263,6 @@ export class TemporaryObject {
 		this.#state.getScene().add(this.mesh);
 	}
 
-// In src/lib/renderer/objects.ts, sostituisci il metodo attach() con questa versione migliorata:
-
 	attach(other: TemporaryObject, junctionId?: number, dontFrame?: true): string {
 		if (junctionId) junctionId %= other.#junctions.length;
 
@@ -278,6 +276,12 @@ export class TemporaryObject {
 
 		const thisCandidates = this.nullJunctions();
 		const otherCandidates = junctionId !== undefined ? [junctionId] : other.nullJunctions();
+		
+		console.log('🎯 Junction search:', {
+			thisCandidates,
+			otherCandidates,
+			requestedSpecific: junctionId !== undefined
+		});
 
 		let thisJunctId = null;
 		let otherJunctId = null;
@@ -302,6 +306,14 @@ export class TemporaryObject {
 					const angleDiff = Math.abs(normalizeAngle(thisAngle) - expectedThisAngle);
 					const wrappedAngleDiff = Math.min(angleDiff, 360 - angleDiff);
 					
+					console.log('🔄 Angle analysis (specific junction):', {
+						thisCandidate,
+						specifiedOtherJunction: junctionId,
+						thisAngle: normalizeAngle(thisAngle),
+						otherAngle: normalizeAngle(otherAngle),
+						wrappedAngleDiff
+					});
+					
 					if (wrappedAngleDiff < bestAngleDiff) {
 						bestAngleDiff = wrappedAngleDiff;
 						thisJunctId = thisCandidate;
@@ -319,6 +331,14 @@ export class TemporaryObject {
 					const thisGroup = this.getCatalogEntry().juncts[thisCandidate].group;
 					const otherGroup = other.getCatalogEntry().juncts[otherCandidate].group;
 					
+					console.log('🔍 Checking compatibility:', {
+						thisCandidate,
+						otherCandidate,
+						thisGroup,
+						otherGroup,
+						compatible: thisGroup === otherGroup
+					});
+					
 					if (thisGroup === otherGroup) {
 						const thisAngle = this.getCatalogEntry().juncts[thisCandidate].angle + this.#angle;
 						const otherAngle = other.getCatalogEntry().juncts[otherCandidate].angle + other.#angle;
@@ -327,10 +347,24 @@ export class TemporaryObject {
 						const angleDiff = Math.abs(normalizeAngle(thisAngle) - expectedThisAngle);
 						const wrappedAngleDiff = Math.min(angleDiff, 360 - angleDiff);
 						
+						console.log('🔄 Angle analysis (auto mode):', {
+							thisCandidate,
+							otherCandidate,
+							thisAngle: normalizeAngle(thisAngle),
+							otherAngle: normalizeAngle(otherAngle),
+							wrappedAngleDiff
+						});
+						
 						if (wrappedAngleDiff < bestAngleDiff) {
 							bestAngleDiff = wrappedAngleDiff;
 							thisJunctId = thisCandidate;
 							otherJunctId = otherCandidate;
+							
+							console.log('✅ New best match found:', { 
+								thisJunctId, 
+								otherJunctId, 
+								angleDiff: wrappedAngleDiff 
+							});
 						}
 					}
 				}
