@@ -112,7 +112,7 @@ export function getSubfamilyName(code: string, translateFn?: (key: string) => st
   
   // Fallback per retrocompatibilità
   const SUBFAMILY_NAMES: Record<string, string> = {
-    'OP': 'Proiettori lineari',
+    'OP': 'Luci lineari',
     'GB': 'Sferiche', 
     'SU': 'Sospensione',
     'SP': 'Proiettori orientabili',

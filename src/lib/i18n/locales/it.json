@@ -100,7 +100,7 @@
     "model3D": "Scarica modello tridimensionale GLTF in 3D"
   },
   "subfamilies": {
-    "OP": "Proiettori lineari",
+    "OP": "Luci lineari",
     "GB": "Sferiche",
     "SU": "Sospensione", 
     "SP": "Proiettori orientabili",

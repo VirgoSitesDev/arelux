@@ -100,7 +100,7 @@
     "model3D": "Download 3D GLTF model"
   },
   "subfamilies": {
-    "OP": "Linear projectors",
+    "OP": "Linear lights",
     "GB": "Sphericals",
     "SU": "Suspended", 
     "SP": "Adjustable projectors",
