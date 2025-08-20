@@ -176,8 +176,8 @@
 		generateProfilesPDF();
 	}
 
-function generateProfilesPDF() {
-    import('jspdf').then(({ jsPDF }) => {
+	function generateProfilesPDF() {
+    import('jspdf').then(async ({ jsPDF }) => {
         const pdf = new jsPDF({
             orientation: 'landscape',
             unit: 'mm',
@@ -368,16 +368,84 @@ function generateProfilesPDF() {
         const pageWidth = 297;
         const pageHeight = 210;
         const margin = 20;
+        const headerHeight = 25;
+        const footerHeight = 25; // Altezza del footer con tabella inline
         const drawArea = {
             width: pageWidth - 2 * margin,
-            height: pageHeight - 2 * margin - 40
+            height: pageHeight - 2 * margin - headerHeight - footerHeight - 10
         };
 
+        // === HEADER MIGLIORATO ===
+        // Logo con proporzioni corrette
+        try {
+            const logoUrl = renderer!.supabase.storage
+                .from(renderer!.tenant)
+                .getPublicUrl(`${renderer!.tenant}.png`).data.publicUrl;
+            
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            
+            await new Promise((resolve) => {
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx?.drawImage(img, 0, 0);
+                        
+                        const dataURL = canvas.toDataURL('image/png');
+                        
+                        // Calcola le dimensioni proporzionali per il logo
+                        const maxLogoWidth = 30;
+                        const maxLogoHeight = 20;
+                        const aspectRatio = img.width / img.height;
+                        
+                        let logoWidth, logoHeight;
+                        if (aspectRatio > maxLogoWidth / maxLogoHeight) {
+                            logoWidth = maxLogoWidth;
+                            logoHeight = maxLogoWidth / aspectRatio;
+                        } else {
+                            logoHeight = maxLogoHeight;
+                            logoWidth = maxLogoHeight * aspectRatio;
+                        }
+                        
+                        // Centra il logo verticalmente nell'header
+                        const logoY = (headerHeight - logoHeight) / 2;
+                        
+                        pdf.addImage(dataURL, 'PNG', 5, logoY, logoWidth, logoHeight);
+                    } catch (e) {
+                        console.warn('Errore caricamento logo:', e);
+                    }
+                    resolve(true);
+                };
+                img.onerror = () => resolve(false);
+                img.src = logoUrl;
+                
+                // Timeout per non bloccare
+                setTimeout(() => resolve(false), 2000);
+            });
+        } catch (e) {
+            console.warn('Logo non disponibile');
+        }
+
+        // Titolo
+        pdf.setTextColor('#000000');
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text("Configurazione Profili - Vista dall'alto", pageWidth / 2, 15, { align: 'center' });
+
+        // Linea di separazione header (allungata)
+        pdf.setLineWidth(0.8);
+        pdf.setDrawColor('#FBBF24'); // Colore giallo del brand
+        pdf.line(margin - 5, headerHeight, pageWidth - margin + 5, headerHeight);
+
+        // === DISEGNO DEI PROFILI ===
         const scaleX = drawArea.width / (maxX - minX);
         const scaleZ = drawArea.height / (maxZ - minZ);
         const scale = Math.min(scaleX, scaleZ) * 0.9;
         const offsetX = margin + (drawArea.width - (maxX - minX) * scale) / 2;
-        const offsetY = margin + (drawArea.height - (maxZ - minZ) * scale) / 2;
+        const offsetY = margin + headerHeight + (drawArea.height - (maxZ - minZ) * scale) / 2;
 
         function worldToPDF(worldX: number, worldZ: number): { x: number; y: number } {
             return {
@@ -449,19 +517,74 @@ function generateProfilesPDF() {
             }
         }
 
-        const totalWidth = (maxX - minX) * 1000;
-        const totalLength = (maxZ - minZ) * 1000;
-
-        pdf.setFontSize(12);
+        // === FOOTER CON TABELLA PROFILI INLINE ===
+        const footerY = pageHeight - margin - 20;
+        
+        // TABELLA PROFILI A SINISTRA
+        const tableStartX = margin;
+        const tableWidth = 150;
+        const rowHeight = 5; // Righe più compatte per stare nel footer
+        
+        // Titolo tabella
+        pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor('#000000');
+        pdf.text('PROFILI PRESENTI:', tableStartX, footerY - 15);
         
-        const dimensionsText = `Dimensioni totali: ${Math.round(totalWidth)}mm × ${Math.round(totalLength)}mm`;
-        const textWidth = pdf.getTextWidth(dimensionsText);
+        // Header tabella compatto
+        pdf.setLineWidth(0.3);
+        pdf.setDrawColor('#CCCCCC');
+        pdf.rect(tableStartX, footerY - 10, tableWidth, rowHeight);
         
-        pdf.text(dimensionsText, (pageWidth - textWidth) / 2, pageHeight - 15);
-
-        pdf.setFontSize(16);
-        pdf.text('Configurazione Profili - Vista dall\'alto', pageWidth / 2, 15, { align: 'center' });
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Codice', tableStartX + 2, footerY - 7);
+        pdf.text('Lunghezza', tableStartX + 80, footerY - 7);
+        pdf.text('Qnt', tableStartX + 125, footerY - 7);
+        
+        // Righe tabella compatte
+        let rowY = footerY - 5;
+        const uniqueProfiles = [...new Set(profileData.map(p => p.code))];
+        
+        pdf.setFont('helvetica', 'normal');
+        for (let i = 0; i < Math.min(uniqueProfiles.length, 3); i++) { // Massimo 3 righe per stare nel footer
+            const code = uniqueProfiles[i];
+            const profilesOfCode = profileData.filter(p => p.code === code);
+            const totalLength = profilesOfCode.reduce((sum, p) => sum + p.length, 0);
+            const quantity = profilesOfCode.length;
+            
+            // Riga alternata
+            if (i % 2 === 0) {
+                pdf.setFillColor('#F8F9FA');
+                pdf.rect(tableStartX, rowY, tableWidth, rowHeight, 'F');
+            }
+            
+            // Bordo riga
+            pdf.rect(tableStartX, rowY, tableWidth, rowHeight);
+            
+            // Testo
+            pdf.setTextColor('#000000');
+            pdf.text(code.length > 12 ? code.substring(0, 12) + '...' : code, tableStartX + 2, rowY + 3);
+            pdf.text(`${Math.round(totalLength)}mm`, tableStartX + 80, rowY + 3);
+            pdf.text(quantity.toString(), tableStartX + 125, rowY + 3);
+            
+            rowY += rowHeight;
+        }
+        
+        // Indicatore se ci sono più profili
+        if (uniqueProfiles.length > 3) {
+            pdf.setFontSize(6);
+            pdf.setTextColor('#666666');
+            pdf.text(`...e altri ${uniqueProfiles.length - 3} profili`, tableStartX + 2, rowY + 2);
+        }
+        
+        // DATA E INFO A DESTRA (STESSA RIGA)
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor('#666666');
+        const currentDate = new Date().toLocaleDateString('it-IT');
+        const currentTime = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        pdf.text(`Generato il ${currentDate} alle ${currentTime}`, pageWidth - margin, footerY - 5, { align: 'right' });
 
         const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
         pdf.save(`configurazione-2d-${timestamp}.pdf`);
