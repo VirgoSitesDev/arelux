@@ -22,6 +22,7 @@ const OBJECT_TEMPERATURE_CONFIG: Record<string, string[]> = {
 	'XNRS01': ['UWW', 'WW', 'NW'],
 	'XNRS02': ['UWW', 'WW', 'NW'],
 	'XNRS03': ['UWW', 'WW', 'NW'],
+	'XNRS33': ['UWW', 'WW', 'NW'],
 	// Aggiungi qui altre luci con configurazioni specifiche
 };
 
