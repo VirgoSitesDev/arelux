@@ -101,10 +101,9 @@
   },
   "subfamilies": {
     "OP": "Luci lineari",
-    "GB": "Sferiche",
-    "SU": "Sospensione", 
-    "SP": "Proiettori orientabili",
-    "SUR": "Sospensione curvi", 
+    "DEC": "Decorative",
+    "SP": "Proiettori orientabili", 
+    "DECR": "Decorative curve",
     "SPR": "Proiettori orientabili curvi"
   },
   "database": {

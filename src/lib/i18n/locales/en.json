@@ -101,11 +101,10 @@
   },
   "subfamilies": {
     "OP": "Linear lights",
-    "GB": "Sphericals",
-    "SU": "Suspended", 
-    "SP": "Adjustable projectors",
-    "SUR": "Curved suspended",
-    "SPR": "Curved adjustable projectors"
+    "DEC": "Decorative",
+    "SP": "Adjustable spotlights",
+    "DECR": "Decorative curved", 
+    "SPR": "Adjustable spotlights curved"
   },
   "database": {
     "terms": {
