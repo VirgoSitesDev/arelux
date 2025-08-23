@@ -115,6 +115,7 @@ export type Database = {
           radius: number | null
           temperature: number | null
           tenant: string
+          sottofamiglia: string
         }
         Insert: {
           angle?: number | null

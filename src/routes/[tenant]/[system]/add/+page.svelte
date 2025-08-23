@@ -105,6 +105,7 @@
 		
 		for (const family of families) {
 			if (hasLightSubfamilies(family)) {
+				console.log("SOTTOFAMIGLIE")
 				const subfamiliesMap = extractSubfamilies(family, enhancedCatalog);
 				
 				for (const [code, subfamily] of subfamiliesMap) {

@@ -90,6 +90,7 @@ export interface FamilyEntry {
 	desc1: string;
 	/** The second row of description that is show on the left sidebar of / */
 	desc2: string;
+	sottofamiglia?: string;
 }
 
 export interface CatalogEntry {
