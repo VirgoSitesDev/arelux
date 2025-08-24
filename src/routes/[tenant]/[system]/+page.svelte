@@ -153,16 +153,37 @@
 	}
 
 	function remove(item: SavedObject) {
+		const objectId = item.object?.id;
 		
+		console.log('🔍 Rimuovendo oggetto:', item.code, 'ID:', objectId);
+
 		let i = $objects.indexOf(item);
 		if (i > -1) {
 			$objects = $objects.toSpliced(i, 1);
 		}
 
 		if (item.object && renderer) {
+			item.object.detachAll();
 			renderer.removeObject(item.object);
-		} else {
-			console.warn('⚠️ Oggetto non ha una mesh associata');
+		}
+
+		if (objectId) {
+			const beforeCount = $objects.filter(o => o.isAutoConnector).length;
+			
+			$objects = $objects.filter(obj => {
+				if (obj.isAutoConnector && obj.connectedTo) {
+					const shouldRemove = obj.connectedTo.includes(objectId) && obj.connectedTo.length === 2;
+					
+					if (shouldRemove) {
+						console.log('🗑️ Rimuovendo connettore:', obj.code, 'che collegava:', obj.connectedTo);
+					}
+					
+					return !shouldRemove;
+				}
+				return true;
+			});
+			
+			const afterCount = $objects.filter(o => o.isAutoConnector).length;
 		}
 	}
 

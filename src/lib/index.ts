@@ -178,17 +178,25 @@ export async function finishEdit(
 				);
 				
 				if (connectorCode) {
-					objects.update((objs) =>
-						objs.concat({
-							code: connectorCode,
-							desc1: 'Connettore automatico',
-							desc2: '',
-							subobjects: [],
-							length: 0,
-							hidden: true,
-							isAutoConnector: true,
-						}),
-					);
+					const connectionIds = [connectedSavedObj.object?.id, obj.id]
+						.filter((id): id is string => id !== undefined)
+						.sort();
+					
+					if (connectionIds.length === 2) {
+						objects.update((objs) => [
+							...objs,
+							{
+								code: connectorCode,
+								desc1: 'Connettore automatico',
+								desc2: '',
+								subobjects: [],
+								length: 0,
+								hidden: true,
+								isAutoConnector: true,
+								connectedTo: connectionIds,
+							}
+						]);
+					}
 				}
 			}
 		}
