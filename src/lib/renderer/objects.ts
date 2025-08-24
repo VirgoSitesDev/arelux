@@ -21,6 +21,28 @@ import {
 	type Vector3Like,
 } from 'three';
 
+function isSurfaceProfile(profileObj: TemporaryObject, renderer: Renderer): boolean {
+    const code = profileObj.getCatalogEntry().code;
+    console.log('Checking if surface profile:', code);
+
+    for (const family of Object.values(renderer.families)) {
+        const familyItem = family.items.find(item => item.code === code);
+        if (familyItem) {
+            const isSurface = family.code === 'profili-superficiali';
+            console.log('Family:', family.code, 'Is surface:', isSurface);
+            return isSurface;
+        }
+    }
+    
+    console.log('Family not found for code:', code);
+    return false;
+}
+
+function isLightObject(obj: TemporaryObject): boolean {
+    const code = obj.getCatalogEntry().code;
+    return code.includes('XNRS') || code.includes('SP');
+}
+
 export class TemporaryObject {
 	readonly id: string;
 	readonly #state: Renderer;
@@ -226,12 +248,19 @@ export class TemporaryObject {
 			const junctionAngle = this.getCatalogEntry().juncts[junctionIndex].angle * (Math.PI/180);
 			this.mesh.rotateY(junctionAngle);
 
-		  const pos2 = this.mesh.localToWorld(new Vector3().copy(j2));
-		  this.mesh.position.copy({
-			x: this.mesh.position.x + attachPoint.x - pos2.x,
-			y: this.mesh.position.y + attachPoint.y - pos2.y,
-			z: this.mesh.position.z + attachPoint.z - pos2.z,
-		  });
+			const pos2 = this.mesh.localToWorld(new Vector3().copy(j2));
+
+			let finalY = this.mesh.position.y + attachPoint.y - pos2.y;
+
+			if (parentObject && isSurfaceProfile(parentObject, this.#state)) {
+				finalY -= 0.5;
+			}
+			
+			this.mesh.position.copy({
+				x: this.mesh.position.x + attachPoint.x - pos2.x,
+				y: finalY,
+				z: this.mesh.position.z + attachPoint.z - pos2.z,
+			});
 
 		  return j1.group;
 		} catch (error) {
@@ -543,11 +572,18 @@ export class TemporaryObject {
 			const junctionAngle = other.getCatalogEntry().juncts[0].angle * (Math.PI/180);
 			other.mesh.rotateY(junctionAngle);
 		}
-	
+
 		const pos2 = other.mesh.localToWorld(new Vector3().copy(j2));
+		let finalY = other.mesh.position.y + attachPoint.y - pos2.y;
+
+		if (isLightObject(other) && isSurfaceProfile(this, this.#state)) {
+			finalY -= 0.5;
+			console.log('Applied surface profile offset to light');
+		}
+
 		other.mesh.position.copy({
 			x: other.mesh.position.x + attachPoint.x - pos2.x,
-			y: other.mesh.position.y + attachPoint.y - pos2.y,
+			y: finalY,
 			z: other.mesh.position.z + attachPoint.z - pos2.z,
 		});
 	
