@@ -152,6 +152,43 @@
 				itemsMap.set(key2, 1 + (itemsMap.get(key2) ?? 0));
 			}
 		}
+
+		for (const object of $objects) {
+			let objectFamily = null;
+			for (const [familyCode, family] of Object.entries(page.data.families)) {
+				if (family.items.some(item => item.code === object.code)) {
+					objectFamily = family;
+					break;
+				}
+			}
+
+			if (objectFamily && objectFamily.code === 'profili-superficiali-35mm') {
+				const familyItem = objectFamily.items.find(item => item.code === object.code);
+				
+				if (familyItem) {
+					const isProfileCurvo = familyItem.deg > 0;
+					const lunghezza = object.length || familyItem.len || 0;
+					
+					let quantitaXNS01CF = 0;
+					
+					if (isProfileCurvo) {
+						quantitaXNS01CF = 2;
+					} else {
+						if (lunghezza <= 1500) {
+							quantitaXNS01CF = 2;
+						} else if (lunghezza <= 2500) {
+							quantitaXNS01CF = 3;
+						}
+					}
+					
+					if (quantitaXNS01CF > 0) {
+						const currentXNS01CF = itemsMap.get('XNS01CF') || 0;
+						itemsMap.set('XNS01CF', currentXNS01CF + quantitaXNS01CF);
+					}
+				}
+			}
+		}
+
 		for (const led of leds) {
 			if (led.amount > 0) itemsMap.set(led.code, led.amount);
 		}
