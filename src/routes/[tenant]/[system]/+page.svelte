@@ -87,22 +87,18 @@
 	}
 
 	function handleBackClick() {
-		// Se non ci sono oggetti nella configurazione, naviga direttamente
 		if ($objects.length === 0) {
 			goto(`/${data.tenant}`);
 		} else {
-			// Altrimenti mostra il dialog di conferma
 			showBackConfirmDialog = true;
 		}
 	}
 
-	// Funzione per confermare e navigare indietro
 	function confirmBack() {
 		showBackConfirmDialog = false;
 		goto(`/${data.tenant}`);
 	}
 
-	// Funzione per annullare
 	function cancelBack() {
 		showBackConfirmDialog = false;
 	}
@@ -120,19 +116,15 @@
 					selectedLight = null;
 					renderer?.setOpacity(1);
 				}
-				// Reset della configurazione selezionata
 				selectedConfiguration = null;
 			}
 		} else {
-			// Quando si disattiva, ripristina l'opacità e cancella la selezione
 			renderer?.setOpacity(1);
 			selectedConfiguration = null;
 		}
 	}
 
 	function handleSystemMove() {
-		// La stanza virtuale rimane fissa, non serve aggiornarla
-		// Solo per eventuali future estensioni
 	}
 
 	function handleLightMove(position: number) {
@@ -186,7 +178,6 @@
 		renderer.handles.setVisible(false);
 	
 		controlsEl.addEventListener('pointerdown', (event) => {
-			// Gestione click per SystemMover
 			if (systemMoverMode && renderer) {
 				pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
 				pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -198,7 +189,6 @@
 				const intersections = renderer.raycast(pointer, intersectables);
 				
 				if (intersections.length > 0) {
-					// Trova l'oggetto cliccato
 					let clickedObject: TemporaryObject | undefined;
 					
 					for (const obj of renderer.getObjects()) {
@@ -213,14 +203,11 @@
 					}
 					
 					if (clickedObject) {
-						// Trova la configurazione connessa
 						const configuration = renderer.findConnectedConfiguration(clickedObject);
 						selectedConfiguration = configuration;
-						
-						// Evidenzia la configurazione
+
 						renderer.highlightConfiguration(configuration);
-						
-						// Frame sulla configurazione (opzionale)
+
 						if (configuration.size > 0) {
 							const firstObj = Array.from(configuration)[0];
 							renderer.frameObject(firstObj);
@@ -228,7 +215,6 @@
 					}
 				}
 			}
-			// Gestione click per LightMover
 			else if (lightMoverMode && renderer) {
 				lights = renderer.getLights();
 

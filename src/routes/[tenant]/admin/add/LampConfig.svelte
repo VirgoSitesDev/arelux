@@ -92,7 +92,6 @@
 		renderer.handles.setVisible(true);
 		renderer.handles.clear();
 
-		// 🔧 NUOVO: Carica la mesh del profilo se in modalità editing
 		if (isEditMode && code) {
 			try {
 				profileObject = await renderer.addObject(code);
@@ -113,7 +112,6 @@
 		}
 	});
 
-	// 🔧 NUOVO: Cleanup quando si esce dalla pagina
 	onDestroy(() => {
 		if (profileObject) {
 			renderer.removeObject(profileObject);

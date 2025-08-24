@@ -17,29 +17,22 @@
 		value?: string;
 		disabled?: boolean;
 	} = $props();
-	
-	// Filtra i colori in base alla temperatura corrente se stiamo selezionando un colore
+
 	let filteredColors = $derived(() => {
-		// Se abbiamo un chosenItem nel page state, filtra i colori per quella temperatura
 		if (page.state.chosenItem) {
 			const currentTemp = TemperatureManager.getCurrentTemperature(page.state.chosenItem);
 			if (currentTemp) {
-				// Trova tutti gli items che hanno la stessa temperatura
 				const itemsWithSameTemp = page.data.families[page.state.chosenFamily]?.items.filter(item => {
 					const itemTemp = TemperatureManager.getCurrentTemperature(item.code);
 					return itemTemp?.suffix === currentTemp.suffix;
 				}) || [];
-				
-				// Estrai i colori unici da questi items
+
 				return _.uniq(itemsWithSameTemp.map(item => item.color).filter(c => c));
 			}
 		}
-		
-		// Fallback: usa tutti i colori disponibili
 		return _.uniq(items);
 	});
-	
-	// Usa $effect per impostare il valore iniziale e aggiornarlo quando cambiano i colori filtrati
+
 	$effect(() => {
 		if (!value || !filteredColors().includes(value)) {
 			value = filteredColors()[0] || items[0];

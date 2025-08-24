@@ -8,7 +8,7 @@
         family: Family;
         value?: string;
         onsubmit?: (value: string, length: number, isCustom?: boolean) => any;
-        allowCustomLength?: boolean; // Nuovo prop per controllare le lunghezze personalizzate
+        allowCustomLength?: boolean;
     };
 
     let { family, value = $bindable(), onsubmit, allowCustomLength = true }: Props = $props();
@@ -48,9 +48,7 @@
     }
 
     function handleSliderChange() {
-        // Se non sono permesse lunghezze personalizzate (XFREES), forza la selezione solo sui pallini
         if (!allowCustomLength) {
-            // Trova la lunghezza standard più vicina
             const closestItem = items.reduce((prev, curr) => 
                 Math.abs(curr.len - valueLen) < Math.abs(prev.len - valueLen) ? curr : prev
             );
@@ -64,7 +62,6 @@
             return;
         }
 
-        // Comportamento originale per sistemi che permettono lunghezze personalizzate (XNET)
         hasError = false;
         errorMessage = '';
         valueInvalid = false;
@@ -86,7 +83,6 @@
     }
 
     function handleCustomLength() {
-        // Se non sono permesse lunghezze personalizzate, non fare nulla
         if (!allowCustomLength) return;
 
         hasError = false;

@@ -28,8 +28,7 @@
 
     function hasVerticalProfiles(): boolean {
         if (!renderer || !selectedConfiguration) return false;
-        
-        // Controlla solo i profili nella configurazione selezionata
+
         const profiles = Array.from(selectedConfiguration).filter(obj => 
             obj.getCatalogEntry().line_juncts && obj.getCatalogEntry().line_juncts.length > 0 ||
             obj.getCatalogEntry().juncts && obj.getCatalogEntry().juncts.length >= 2

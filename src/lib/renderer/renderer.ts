@@ -1370,7 +1370,6 @@ class ConfigurationManager {
 		this.renderer = renderer;
 	}
 
-	// Trova tutti gli oggetti connessi a partire da un oggetto iniziale
 	findConnectedConfiguration(startObject: TemporaryObject): Set<TemporaryObject> {
 		const configuration = new Set<TemporaryObject>();
 		const toVisit: TemporaryObject[] = [startObject];
@@ -1380,31 +1379,25 @@ class ConfigurationManager {
 			
 			if (configuration.has(current)) continue;
 			configuration.add(current);
-			
-			// Aggiungi oggetti connessi tramite junctions
+
 			for (const junction of current.getJunctions()) {
 				if (junction !== null && !configuration.has(junction)) {
 					toVisit.push(junction);
 				}
 			}
-			
-			// Aggiungi oggetti connessi tramite line junctions
+
 			for (const lineJunction of current.getLineJunctions()) {
 				if (lineJunction !== null && !configuration.has(lineJunction)) {
 					toVisit.push(lineJunction);
 				}
 			}
-			
-			// Cerca anche connessioni inverse (oggetti che hanno questo oggetto nelle loro junctions)
+
 			for (const obj of this.renderer.getObjects()) {
 				if (configuration.has(obj)) continue;
-				
-				// Controlla se obj è connesso a current tramite junctions
+
 				if (obj.getJunctions().includes(current)) {
 					toVisit.push(obj);
 				}
-				
-				// Controlla se obj è connesso a current tramite line junctions
 				if (obj.getLineJunctions().includes(current)) {
 					toVisit.push(obj);
 				}
@@ -1414,7 +1407,6 @@ class ConfigurationManager {
 		return configuration;
 	}
 
-	// Sposta una configurazione specifica
 	moveConfiguration(configuration: Set<TemporaryObject>, deltaX: number, deltaY: number, deltaZ: number): void {
 		const delta = new Vector3(deltaX, deltaY, deltaZ);
 		
@@ -1425,26 +1417,21 @@ class ConfigurationManager {
 		}
 	}
 
-	// Evidenzia una configurazione
 	highlightConfiguration(configuration: Set<TemporaryObject> | null): void {
 		this.renderer.setOpacity(1);
 		
 		if (configuration && configuration.size > 0) {
-			// Riduci opacità per tutti gli oggetti non nella configurazione
 			for (const obj of this.renderer.getObjects()) {
 				if (!configuration.has(obj)) {
 					obj.setOpacity(0.4);
 				}
 			}
-			
-			// Assicurati che gli oggetti nella configurazione siano visibili
 			for (const obj of configuration) {
 				obj.setOpacity(1);
 			}
 		}
 	}
 
-	// Trova la configurazione che contiene un oggetto specifico
 	findConfigurationContaining(object: TemporaryObject): Set<TemporaryObject> | null {
 		for (const obj of this.renderer.getObjects()) {
 			if (obj === object) {
@@ -1456,7 +1443,6 @@ class ConfigurationManager {
 	centerConfigurationInRoom(configuration: Set<TemporaryObject>): void {
 		if (configuration.size === 0) return;
 
-		// Separa profili da altri oggetti nella configurazione
 		const profiles: TemporaryObject[] = [];
 		const otherObjects: TemporaryObject[] = [];
 
@@ -1474,7 +1460,6 @@ class ConfigurationManager {
 
 		let configurationCenter: Vector3;
 
-		// Calcola il centro della configurazione
 		if (profiles.length > 0) {
 			configurationCenter = this.calculateProfilesCenter(profiles);
 		} else {
@@ -1487,12 +1472,10 @@ class ConfigurationManager {
 			configurationCenter = bbox.getCenter(new Vector3());
 		}
 
-		// Calcola l'offset per centrare nella stanza (0,0,0)
 		const roomCenter = new Vector3(0, 0, 0);
 		const offset = roomCenter.clone().sub(configurationCenter);
-		offset.y = 0; // Mantieni l'altezza originale
+		offset.y = 0;
 
-		// Applica l'offset solo agli oggetti della configurazione
 		for (const obj of configuration) {
 			if (obj.mesh) {
 				obj.mesh.position.add(offset);
@@ -1500,7 +1483,6 @@ class ConfigurationManager {
 		}
 	}
 
-	// Helper method per calcolare il centro dei profili
 	private calculateProfilesCenter(profiles: TemporaryObject[]): Vector3 {
 		if (profiles.length === 0) {
 			return new Vector3(0, 0, 0);
@@ -1523,7 +1505,6 @@ class ConfigurationManager {
 				.multiplyScalar(0.5);
 		}
 
-		// Per configurazioni con più profili
 		const extremePoints: Vector3[] = [];
 
 		for (const profile of profiles) {
@@ -1540,7 +1521,6 @@ class ConfigurationManager {
 			extremePoints.push(point1World, point2World);
 		}
 
-		// Calcola il baricentro
 		const barycenter = new Vector3();
 		for (const point of extremePoints) {
 			barycenter.add(point);

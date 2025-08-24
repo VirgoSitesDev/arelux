@@ -1,8 +1,7 @@
 <script lang="ts">
     import { translateDatabaseText } from './dbTranslator';
     import { locale } from 'svelte-i18n';
-    
-    // Props del componente
+
     let { 
         text = '',
         fallback = '',

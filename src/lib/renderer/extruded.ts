@@ -34,7 +34,6 @@ export class ExtrudedObject extends TemporaryObject {
 		if (!entry) throw new Error(`Catalog doesn't contain object ${code}`);
 		entry = JSON.parse(JSON.stringify(entry));
 
-		// Calculate new junctions
 		const v1 = { x: extrudePath.v1.x, y: extrudePath.v1.y, z: extrudePath.v1.z };
 		const v2 = { x: extrudePath.v2.x, y: extrudePath.v2.y, z: extrudePath.v2.z };
 		entry.juncts = [
@@ -44,13 +43,6 @@ export class ExtrudedObject extends TemporaryObject {
 		entry.line_juncts = [{ group: entry.line_juncts[0].group, point1: v1, point2: v2, pointC: v2 }];
 
 		this.setCatalogEntry(entry);
-
-		// TODO: remove this
-		// resetMaterial(mesh, false);
-
-		// TODO: support line junctions
-
-		// TODO: actually use the simplified model
 	}
 
 	/**

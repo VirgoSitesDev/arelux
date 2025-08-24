@@ -17,13 +17,11 @@ const FAMILY_TEMPERATURE_CONFIG: Record<string, string[]> = {
 	'XNET': ['UWW', 'WW'],
 };
 
-// NUOVO: Configurazione per oggetti specifici che hanno temperature diverse dalla famiglia
 const OBJECT_TEMPERATURE_CONFIG: Record<string, string[]> = {
 	'XNRS01': ['UWW', 'WW', 'NW'],
 	'XNRS02': ['UWW', 'WW', 'NW'],
 	'XNRS03': ['UWW', 'WW', 'NW'],
 	'XNRS33': ['UWW', 'WW', 'NW'],
-	// Aggiungi qui altre luci con configurazioni specifiche
 };
 
 const generatedVariants = new Map<string, any[]>();

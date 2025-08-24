@@ -369,14 +369,13 @@
         const pageHeight = 210;
         const margin = 20;
         const headerHeight = 25;
-        const footerHeight = 25; // Altezza del footer con tabella inline
+        const footerHeight = 25;
         const drawArea = {
             width: pageWidth - 2 * margin,
             height: pageHeight - 2 * margin - headerHeight - footerHeight - 10
         };
 
-        // === HEADER MIGLIORATO ===
-        // Logo con proporzioni corrette
+        // === HEADER ===
         try {
             const logoUrl = renderer!.supabase.storage
                 .from(renderer!.tenant)
@@ -395,8 +394,6 @@
                         ctx?.drawImage(img, 0, 0);
                         
                         const dataURL = canvas.toDataURL('image/png');
-                        
-                        // Calcola le dimensioni proporzionali per il logo
                         const maxLogoWidth = 30;
                         const maxLogoHeight = 20;
                         const aspectRatio = img.width / img.height;
@@ -409,8 +406,6 @@
                             logoHeight = maxLogoHeight;
                             logoWidth = maxLogoHeight * aspectRatio;
                         }
-                        
-                        // Centra il logo verticalmente nell'header
                         const logoY = (headerHeight - logoHeight) / 2;
                         
                         pdf.addImage(dataURL, 'PNG', 5, logoY, logoWidth, logoHeight);
@@ -421,23 +416,19 @@
                 };
                 img.onerror = () => resolve(false);
                 img.src = logoUrl;
-                
-                // Timeout per non bloccare
                 setTimeout(() => resolve(false), 2000);
             });
         } catch (e) {
             console.warn('Logo non disponibile');
         }
 
-        // Titolo
         pdf.setTextColor('#000000');
         pdf.setFontSize(16);
         pdf.setFont('helvetica', 'bold');
         pdf.text("Configurazione Profili - Vista dall'alto", pageWidth / 2, 15, { align: 'center' });
 
-        // Linea di separazione header (allungata)
         pdf.setLineWidth(0.8);
-        pdf.setDrawColor('#FBBF24'); // Colore giallo del brand
+        pdf.setDrawColor('#FBBF24');
         pdf.line(margin - 5, headerHeight, pageWidth - margin + 5, headerHeight);
 
         // === DISEGNO DEI PROFILI ===
@@ -517,21 +508,18 @@
             }
         }
 
-        // === FOOTER CON TABELLA PROFILI INLINE ===
+        // === FOOTER ===
         const footerY = pageHeight - margin - 20;
-        
-        // TABELLA PROFILI A SINISTRA
+
         const tableStartX = margin;
         const tableWidth = 150;
-        const rowHeight = 5; // Righe più compatte per stare nel footer
-        
-        // Titolo tabella
+        const rowHeight = 5;
+
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor('#000000');
         pdf.text('PROFILI PRESENTI:', tableStartX, footerY - 15);
-        
-        // Header tabella compatto
+
         pdf.setLineWidth(0.3);
         pdf.setDrawColor('#CCCCCC');
         pdf.rect(tableStartX, footerY - 10, tableWidth, rowHeight);
@@ -541,28 +529,23 @@
         pdf.text('Codice', tableStartX + 2, footerY - 7);
         pdf.text('Lunghezza', tableStartX + 80, footerY - 7);
         pdf.text('Qnt', tableStartX + 125, footerY - 7);
-        
-        // Righe tabella compatte
+
         let rowY = footerY - 5;
         const uniqueProfiles = [...new Set(profileData.map(p => p.code))];
         
         pdf.setFont('helvetica', 'normal');
-        for (let i = 0; i < Math.min(uniqueProfiles.length, 3); i++) { // Massimo 3 righe per stare nel footer
+        for (let i = 0; i < Math.min(uniqueProfiles.length, 3); i++) {
             const code = uniqueProfiles[i];
             const profilesOfCode = profileData.filter(p => p.code === code);
             const totalLength = profilesOfCode.reduce((sum, p) => sum + p.length, 0);
             const quantity = profilesOfCode.length;
-            
-            // Riga alternata
+
             if (i % 2 === 0) {
                 pdf.setFillColor('#F8F9FA');
                 pdf.rect(tableStartX, rowY, tableWidth, rowHeight, 'F');
             }
-            
-            // Bordo riga
+
             pdf.rect(tableStartX, rowY, tableWidth, rowHeight);
-            
-            // Testo
             pdf.setTextColor('#000000');
             pdf.text(code.length > 12 ? code.substring(0, 12) + '...' : code, tableStartX + 2, rowY + 3);
             pdf.text(`${Math.round(totalLength)}mm`, tableStartX + 80, rowY + 3);
@@ -570,15 +553,13 @@
             
             rowY += rowHeight;
         }
-        
-        // Indicatore se ci sono più profili
+
         if (uniqueProfiles.length > 3) {
             pdf.setFontSize(6);
             pdf.setTextColor('#666666');
             pdf.text(`...e altri ${uniqueProfiles.length - 3} profili`, tableStartX + 2, rowY + 2);
         }
-        
-        // DATA E INFO A DESTRA (STESSA RIGA)
+
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor('#666666');
@@ -594,64 +575,36 @@
     });
 }
 
-// Funzione matematicamente corretta per calcolare il punto di controllo Bézier
 function calculateBezierControlPoint(point1: Vector3, point2: Vector3, angleInDegrees: number, radiusInMM: number, curveDirection: number = 1): Vector3 {
-    // console.log('🧮 Calculating Bezier control point:', { angleInDegrees, radiusInMM, curveDirection });
     
     const midPoint = new Vector3().addVectors(point1, point2).multiplyScalar(0.5);
     const chordVector = new Vector3().subVectors(point2, point1);
     const chordLength = chordVector.length();
     const chordDirection = chordVector.normalize();
-    
-    // Vettore normale (perpendicolare alla corda) - direzione base
     const normal = new Vector3(-chordDirection.z, 0, chordDirection.x);
-    
-    // CORREZIONE: Calcola il raggio reale dal profilo 3D, non dai metadati
+
     let realRadius;
     
     if (angleInDegrees >= 170) {
-        // Per semicerchi: raggio = metà della corda
         realRadius = chordLength / 2;
-        // console.log('🌙 Semicircle: using real radius from chord length:', realRadius);
     } else {
-        // Per archi < 180°: calcola raggio dalla formula geometrica
-        // chord = 2 * radius * sin(angle/2)
-        // quindi: radius = chord / (2 * sin(angle/2))
         const angleRad = (angleInDegrees * Math.PI) / 180;
         const halfAngle = angleRad / 2;
         realRadius = chordLength / (2 * Math.sin(halfAngle));
-        // console.log('📐 Arc: calculated real radius:', realRadius, 'vs metadata radius:', radiusInMM / 1000);
     }
-    
-    // Per un semicerchio (180°), il punto di controllo è al centro del cerchio
-    // che è a distanza = raggio dal punto medio della corda
+
     let controlDistance;
     
     if (angleInDegrees >= 170) {
-        // Semicerchio: punto di controllo al centro del cerchio
         controlDistance = realRadius;
     } else {
-        // Arco normale: usa la sagitta moltiplicata per il fattore Bézier
         const angleRad = (angleInDegrees * Math.PI) / 180;
         const halfAngle = angleRad / 2;
         const sagitta = realRadius * (1 - Math.cos(halfAngle));
-        
-        // Per Bézier quadratica che approssima un arco circolare
+
         controlDistance = sagitta * (4/3);
     }
-    
-    // APPLICA LA DIREZIONE CORRETTA
     const controlPoint = midPoint.clone().add(normal.multiplyScalar(controlDistance * curveDirection));
-    
-    // console.log('✅ Final control point calculation:', {
-    //     chordLength,
-    //     realRadius,
-    //     controlDistance,
-    //     curveDirection,
-    //     controlPoint,
-    //     'offset ratio': controlDistance / chordLength
-    // });
-    
     return controlPoint;
 }
 

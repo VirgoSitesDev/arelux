@@ -57,7 +57,6 @@ function lineJunctionCompatible(
 }
 
 function isProfileVertical(catalogEntry: CatalogEntry): boolean {
-	// Controlla se il profilo è verticale analizzando la line junction
 	if (!catalogEntry.line_juncts || catalogEntry.line_juncts.length === 0) {
 		return false;
 	}
@@ -68,24 +67,21 @@ function isProfileVertical(catalogEntry: CatalogEntry): boolean {
 		y: lineJunct.point2.y - lineJunct.point1.y,
 		z: lineJunct.point2.z - lineJunct.point1.z
 	};
-	
-	// Normalizza la direzione
+
 	const length = Math.sqrt(lineDirection.x * lineDirection.x + lineDirection.y * lineDirection.y + lineDirection.z * lineDirection.z);
 	if (length === 0) return false;
 	
 	lineDirection.x /= length;
 	lineDirection.y /= length;
 	lineDirection.z /= length;
-	
-	// È verticale se la componente Y è dominante
+
 	return Math.abs(lineDirection.y) > Math.abs(lineDirection.x) && 
 		Math.abs(lineDirection.y) > Math.abs(lineDirection.z);
 }
 
 function isForbiddenLightForVerticalProfile(catalogEntry: CatalogEntry): boolean {
 	const forbiddenLights = ['XNRS11', 'XNRS14', 'XNRS15', 'XNRS16'];
-	
-	// Controlla se il codice della luce contiene uno dei codici vietati
+
 	return forbiddenLights.some(forbiddenCode => 
 		catalogEntry.code.includes(forbiddenCode)
 	);

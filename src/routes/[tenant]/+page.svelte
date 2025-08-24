@@ -104,11 +104,6 @@
 			window.location.href = `/${$page.params.tenant}/${selectedSystem.id}`;
 		}
 	}
-
-	$: console.log('Descrizioni aggiornate:', {
-		xnet: getDescription('xnet'),
-		xfree_s: getDescription('xfree_s')
-	});
 </script>
 
 <div class="flex flex-col h-screen">

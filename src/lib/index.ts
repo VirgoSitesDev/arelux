@@ -72,7 +72,6 @@ export async function finishEdit(
 	
 	const family = page.data.families[state.chosenFamily];
 	let item = family.items.find((x) => x.code == state.chosenItem);
-	console.log(item?.code);
 	if (item === undefined) {
 		toast.error('An internal error occurred');
 		console.error("finishEdit: can't find state.chosenItem inside state.chosenFamily");

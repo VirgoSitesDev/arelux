@@ -82,14 +82,10 @@
 		const currentSystem = page.data.system.toLowerCase();
 		
 		if (currentSystem === 'XFREE S' || currentSystem === 'xfree s') {
-			// XFREES: solo driver AT48 (REMOTE)
 			return drivers.filter((driver: { code: string; power: number }) => driver.code.startsWith('AT'));
 		} else if (currentSystem === 'XNET' || currentSystem === 'xnet') {
-			// XNET: tutti i driver (sia INTRACK che REMOTE)
 			return drivers;
 		}
-		
-		// Default: tutti i driver
 		return drivers;
 	});
 

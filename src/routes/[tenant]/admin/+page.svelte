@@ -10,8 +10,7 @@
 	import type { CatalogEntry } from '../../../app';
 
 	let { data }: { data: PageData } = $props();
-	
-	// Usa $derived invece di $:
+
 	const catalogValues = $derived(Object.values(data.catalog) as CatalogEntry[]);
 </script>
 

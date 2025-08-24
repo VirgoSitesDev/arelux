@@ -105,7 +105,6 @@
 		
 		for (const family of families) {
 			if (hasLightSubfamilies(family)) {
-				console.log("SOTTOFAMIGLIE")
 				const subfamiliesMap = extractSubfamilies(family, enhancedCatalog);
 				
 				for (const [code, subfamily] of subfamiliesMap) {
@@ -328,11 +327,9 @@
 						{#each data.modes as thisMode}
 							<Button.Root on:click={() => {
 								mode = thisMode;
-								// Reset selezioni quando cambi mode
 								selectedSubfamily = undefined;
 								selectedPower = undefined;
 								showPowerPanel = false;
-								// Reset handles
 								renderer?.handles.setVisible(false);
 								renderer?.setOpacity(1);
 							}}>
@@ -539,8 +536,7 @@
 						disabled={(chosenFamily === undefined) || 
 								(lightSubfamilies().length > 0 && !selectedPower)}
 						on:click={() => {
-						
-						// Gestione normale per famiglie
+
 						if (chosenFamily === undefined) return;
 
 						const family = data.families[chosenFamily];
@@ -559,7 +555,6 @@
 						if (!item) return;
 						
 						if (hasTemperatureVariants(family)) {
-							// Prioritizza WW se disponibile, altrimenti il primo della lista
 							const availableTemps = getAvailableTemperatures(family);
 							const wwTemp = availableTemps.find(t => t.suffix === 'WW');
 							if (wwTemp) {
@@ -658,13 +653,11 @@
 						class="flex flex-col items-center gap-2 group"
 						onclick={() => {
 							selectedPower = model;
-							
-							// IMPORTANTE: Mostra subito le handles quando selezioni una potenza!
+
 							if (renderer && selectedPower) {
 								renderer.handles.selectObject(selectedPower.sampleCode).setVisible(true);
 								renderer.setOpacity(0.4);
-								
-								// Imposta il callback per quando clicchi su una handle
+
 								renderer.setClickCallback((handle) => {
 									let reference: typeof page.state.reference = {
 										typ: 'junction',
@@ -685,7 +678,6 @@
 										};
 									}
 
-									// Trova la famiglia per questo item
 									let familyForItem: string | undefined;
 									for (const [famCode, fam] of Object.entries(data.families)) {
 										if (fam.items.some(i => i.code === selectedPower!.sampleCode)) {
@@ -699,7 +691,6 @@
 										return;
 									}
 
-									// Naviga direttamente alla configurazione o aggiungi l'oggetto
 									const family = data.families[familyForItem];
 									const item = family.items.find(i => i.code === selectedPower!.sampleCode);
 									
@@ -716,7 +707,6 @@
 											length: item.len > 0 ? item.len : undefined
 										});
 									} else if (family.hasModel) {
-										// Aggiungi l'oggetto direttamente
 										renderer!.addObject(item.code).then((object) => {
 											if (reference.typ === 'junction') {
 												renderer!.getObjectById(reference.id)?.attach(object);
@@ -887,8 +877,6 @@
 					onsubmit={(color) => {
 						const { angle, radius } = configShape ?? { angle: -1, radius: -1 };
 						const { needsCurveConfig, needsLengthConfig } = family;
-						
-						// Ottieni la temperatura corrente
 						const currentTemp = getCurrentTemperature(page.state.chosenItem);
 						
 						const items = family.items
@@ -896,7 +884,6 @@
 							.filter((i) => (needsLengthConfig ? i.len === configLength : true))
 							.filter((i) => i.color === color)
 							.filter((i) => {
-								// Filtra anche per temperatura se disponibile
 								if (currentTemp) {
 									const itemTemp = getCurrentTemperature(i.code);
 									return itemTemp?.suffix === currentTemp.suffix;
