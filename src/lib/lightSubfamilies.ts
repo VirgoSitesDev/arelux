@@ -82,20 +82,27 @@ function getSubfamilyCodeFromName(displayName: string): string {
   const NAME_TO_CODE: Record<string, string> = {
     // Nomi italiani
     'Luci lineari': 'OP',
-    'Decorative': 'DEC',
-    'Decorative curve': 'DECR', 
+    'Luci lineari per profili curvi': 'OPR',
+    'Proiettori lineari': 'LPR',
+    'Luci decorative': 'DEC',
+    'Luci decorative curve': 'DECR', 
     'Proiettori orientabili': 'SP',
     'Proiettori orientabili curvi': 'SPR',
     'Proiettori orientabili zoomabili': 'SPZ',
     'Proiettori orientabili zoomabili curvi': 'SPZR',
+    'Proiettori orientabili con forma': 'FPR',
     
     // Se usi anche nomi inglesi nel DB, aggiungili qui
     'Linear lights': 'OP',
-    'Decorative curved': 'DECR',
-    'Adjustable spotlights': 'SP',
-    'Adjustable spotlights curved': 'SPR',
-    'Adjustable zoomable spotlights': 'SPZ',
-    'Adjustable zoomable spotlights curved': 'SPZR',
+    'Linear lights for curved profiles': 'OPR',
+    'Linear projectors': 'LPR',
+    'Decorative lights': 'DEC',
+    'Curved decorative lights': 'DECR',
+    'Adjustable projectors': 'SP',
+    'Adjustable curved projectors': 'SPR',
+    'Adjustable zoomable projectors': 'SPZ',
+    'Adjustable zoomable curved projectors': 'SPZR',
+    'Shape adjustable projectors': 'FPR',
   };
   
   return NAME_TO_CODE[displayName] || displayName.replace(/\s+/g, '_').toUpperCase();
@@ -110,12 +117,15 @@ export function getSubfamilyName(code: string, translateFn?: (key: string) => st
   // Fallback - ora questi nomi vengono dal DB
   const SUBFAMILY_NAMES: Record<string, string> = {
     'OP': 'Luci lineari',
-    'DEC': 'Decorative',
-    'DECR': 'Decorative curve',
+    'OPR': 'Luci lineari per profili curvi',
+    'LPR': 'Proiettori lineari',
+    'DEC': 'Luci decorative',
+    'DECR': 'Luci decorative curve',
     'SP': 'Proiettori orientabili',
     'SPR': 'Proiettori orientabili curvi',
     'SPZ': 'Proiettori orientabili zoomabili',
     'SPZR': 'Proiettori orientabili zoomabili curvi',
+    'FPR': 'Proiettori orientabili con forma',
   };
   
   return SUBFAMILY_NAMES[code] || code;
@@ -124,12 +134,15 @@ export function getSubfamilyName(code: string, translateFn?: (key: string) => st
 // Ordinamento basato sui codici
 const SUBFAMILY_ORDER: Record<string, number> = {
   'OP': 1,
-  'DEC': 2,
-  'DECR': 3,
-  'SP': 4,
-  'SPR': 5,
-  'SPZ': 6,
-  'SPZR': 7,
+  'OPR': 2,
+  'LPR': 3,
+  'DEC': 4,
+  'DECR': 5,
+  'SP': 6,
+  'SPR': 7,
+  'SPZ': 8,
+  'SPZR': 9,
+  'FPR': 10,
 };
 
 export function sortSubfamilies(subfamilies: LightSubfamily[]): LightSubfamily[] {

@@ -101,10 +101,15 @@
   },
   "subfamilies": {
     "OP": "Linear lights",
-    "DEC": "Decorative",
-    "SP": "Adjustable spotlights",
-    "DECR": "Decorative curved", 
-    "SPR": "Adjustable spotlights curved"
+    "OPR": "Linear lights for curved profiles",
+    "LPR": "Linear projectors",
+    "DEC": "Decorative lights",
+    "DECR": "Curved decorative lights", 
+    "SP": "Adjustable projectors",
+    "SPR": "Adjustable curved projectors",
+    "SPZ": "Adjustable zoomable projectors",
+    "SPZR": "Adjustable zoomable curved projectors",
+    "FPR": "Shape adjustable projectors"
   },
   "database": {
     "terms": {
@@ -149,7 +154,10 @@
       "Profilo dritto": "Linear profile",
       "Profili curvi": "Curved profiles",
       "Raggio": "Radius",
-      "Profilo da": "Profile"
+      "Profilo da": "Profile",
+      "Proiettore orientabile zoomabile": "Zoomable adjustable projector",
+      "Proiettore orientabile zoomabile curvo": "Curved zoomable adjustable projector",
+      "Proiettore orientabile con forma": "Shape adjustable projector"
     }
   }
 }

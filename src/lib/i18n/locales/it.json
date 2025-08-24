@@ -101,10 +101,15 @@
   },
   "subfamilies": {
     "OP": "Luci lineari",
-    "DEC": "Decorative",
+    "OPR": "Luci lineari per profili curvi",
+    "LPR": "Proiettori lineari",
+    "DEC": "Luci decorative",
+    "DECR": "Luci decorative curve",
     "SP": "Proiettori orientabili", 
-    "DECR": "Decorative curve",
-    "SPR": "Proiettori orientabili curvi"
+    "SPR": "Proiettori orientabili curvi",
+    "SPZ": "Proiettori orientabili zoomabili",
+    "SPZR": "Proiettori orientabili zoomabili curvi",
+    "FPR": "Proiettori orientabili con forma"
   },
   "database": {
     "terms": {
@@ -149,7 +154,10 @@
       "Profilo dritto": "Profilo dritto",
       "Profili curvi": "Profili curvi",
       "Raggio": "Raggio",
-      "Profilo da": "Profilo da"
+      "Profilo da": "Profilo da",
+      "Proiettore orientabile zoomabile": "Proiettore orientabile zoomabile",
+      "Proiettore orientabile zoomabile curvo": "Proiettore orientabile zoomabile curvo",
+      "Proiettore orientabile con forma": "Proiettore orientabile con forma"
     }
   }
 }
