@@ -23,18 +23,15 @@ import {
 
 function isSurfaceProfile(profileObj: TemporaryObject, renderer: Renderer): boolean {
     const code = profileObj.getCatalogEntry().code;
-    console.log('Checking if surface profile:', code);
 
     for (const family of Object.values(renderer.families)) {
         const familyItem = family.items.find(item => item.code === code);
         if (familyItem) {
             const isSurface = family.code === 'profili-superficiali';
-            console.log('Family:', family.code, 'Is surface:', isSurface);
             return isSurface;
         }
     }
-    
-    console.log('Family not found for code:', code);
+
     return false;
 }
 
@@ -578,7 +575,6 @@ export class TemporaryObject {
 
 		if (isLightObject(other) && isSurfaceProfile(this, this.#state)) {
 			finalY -= 0.5;
-			console.log('Applied surface profile offset to light');
 		}
 
 		other.mesh.position.copy({

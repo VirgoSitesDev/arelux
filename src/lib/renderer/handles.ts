@@ -27,11 +27,51 @@ function clamp(num: number, min: number, max: number): number {
 	return Math.min(Math.max(num, min), max);
 }
 
+// Funzione helper per trovare la famiglia di un oggetto
+function findObjectFamily(objectCode: string, families: Record<string, any>): any | null {
+	for (const family of Object.values(families)) {
+		if (family.items && family.items.some((item: any) => item.code === objectCode)) {
+			return family;
+		}
+	}
+	return null;
+}
+
+// Funzione per controllare se due famiglie possono connettersi
+function canFamiliesConnect(thisObj: CatalogEntry, otherObj: CatalogEntry, renderer: Renderer): boolean {
+	const thisFamily = findObjectFamily(thisObj.code, renderer.families);
+	const otherFamily = findObjectFamily(otherObj.code, renderer.families);
+	
+	if (!thisFamily || !otherFamily) {
+		return true; // Se non troviamo le famiglie, permettiamo la connessione (fallback)
+	}
+	
+	console.log(thisFamily);
+	console.log(otherFamily);
+	// Impedire connessioni tra profili superficiali normali e con sospensione 35mm
+	const isSuperficiali1 = thisFamily.displayName === "Profili superficiali";
+	const isSuperficiali35mm1 = thisFamily.displayName === "Profili superficiali 35mm";
+	const isSuperficiali2 = otherFamily.displayName === "Profili superficiali";
+	const isSuperficiali35mm2 = otherFamily.displayName === "Profili superficiali 35mm";
+	
+	if ((isSuperficiali1 && isSuperficiali35mm2) || (isSuperficiali35mm1 && isSuperficiali2)) {
+		return false;
+	}
+	
+	return true;
+}
+
 function junctionCompatible(
 	thisObj: CatalogEntry,
 	otherObj: CatalogEntry,
 	otherJunctId: number,
+	renderer: Renderer,
 ): number {
+	// Prima controlla se le famiglie possono connettersi
+	if (!canFamiliesConnect(thisObj, otherObj, renderer)) {
+		return -1;
+	}
+	
 	return thisObj.juncts.findIndex((j) => j.group == otherObj.juncts[otherJunctId].group);
 }
 
@@ -39,7 +79,13 @@ function lineJunctionCompatible(
 	thisObj: CatalogEntry,
 	otherObj: CatalogEntry,
 	otherJunctId: number,
+	renderer: Renderer,
 ): number {
+	// Prima controlla se le famiglie possono connettersi
+	if (!canFamiliesConnect(thisObj, otherObj, renderer)) {
+		return -1;
+	}
+	
 	const groupCompatible = thisObj.juncts.findIndex((j) => j.group == otherObj.line_juncts[otherJunctId].group);
 	
 	if (groupCompatible === -1) {
@@ -135,7 +181,7 @@ export class HandleManager {
 				.getJunctions()
 				.entries())
 				.filter(([_, withObj]) => withObj === null)
-				.map(([i, _]) => [junctionCompatible(thisCatalog, other.getCatalogEntry(), i), i])
+				.map(([i, _]) => [junctionCompatible(thisCatalog, other.getCatalogEntry(), i, this.#state), i])
 				.forEach(([thisJunctId, otherJunctId]) => {
 					const pos = new Vector3().copy(other.getCatalogEntry().juncts[otherJunctId]);
 					other.mesh?.localToWorld(pos);
@@ -149,7 +195,7 @@ export class HandleManager {
 			Array.from(other
 				.getLineJunctions()
 				.entries())
-				.map(([i, _]) => [lineJunctionCompatible(thisCatalog, other.getCatalogEntry(), i), i])
+				.map(([i, _]) => [lineJunctionCompatible(thisCatalog, other.getCatalogEntry(), i, this.#state), i])
 				.forEach(([thisJunctId, otherJunctId]) => {
 					if (thisJunctId !== -1 && otherJunctId !== -1) {
 						this.createLineHandle(thisJunctId, otherJunctId, other);
