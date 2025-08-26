@@ -251,7 +251,7 @@
 			renderer?.addObject(page.state.chosenItem).then((o) => {
 				if (junctionId !== undefined) o.markJunction(junctionId);
 
-				if (page.state.isCustomLength && page.state.length) {
+				if (page.state.length) {
 					const family = data.families[page.state.chosenFamily!];
 					const item = family.items.find(i => i.code === page.state.chosenItem);
 					if (item && item.len > 0) {
