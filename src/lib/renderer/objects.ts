@@ -35,6 +35,20 @@ function isSurfaceProfile(profileObj: TemporaryObject, renderer: Renderer): bool
     return false;
 }
 
+function is35mmSurfaceProfile(profileObj: TemporaryObject, renderer: Renderer): boolean {
+    const code = profileObj.getCatalogEntry().code;
+
+    for (const family of Object.values(renderer.families)) {
+        const familyItem = family.items.find(item => item.code === code);
+        if (familyItem) {
+            const is35mmSurface = family.code === 'profili-superficiali-35mm';
+            return is35mmSurface;
+        }
+    }
+
+    return false;
+}
+
 function isLightObject(obj: TemporaryObject): boolean {
     const code = obj.getCatalogEntry().code;
     return code.includes('XNRS') || code.includes('SP');
@@ -251,6 +265,9 @@ export class TemporaryObject {
 
 			if (parentObject && isSurfaceProfile(parentObject, this.#state)) {
 				finalY -= 0.5;
+			}
+			else if (parentObject && is35mmSurfaceProfile(parentObject, this.#state)) {
+				finalY -= 0.45;
 			}
 			
 			this.mesh.position.copy({
@@ -575,6 +592,9 @@ export class TemporaryObject {
 
 		if (isLightObject(other) && isSurfaceProfile(this, this.#state)) {
 			finalY -= 0.5;
+		}
+		else if (isLightObject(other) && is35mmSurfaceProfile(this, this.#state)) {
+			finalY -= 0.45;
 		}
 
 		other.mesh.position.copy({
