@@ -129,9 +129,16 @@
 
 				{#if systems.length < 5}
 					{#each Array(5 - systems.length) as _, i}
-						<button class="w-full py-3 rounded-full text-center font-medium bg-gray-100 text-gray-400 scale-90 transform">
-							Lorem
-						</button>
+						{#if i != 0}
+							<button class="w-full py-3 rounded-full text-center font-medium bg-gray-100 text-gray-400 scale-90 transform">
+								Lorem
+							</button>
+						{/if}
+						{#if i == 0}
+							<button class="w-full py-3 rounded-full text-center font-medium bg-gray-100 text-gray-400 scale-90 transform">
+								XFREEM (in arrivo)
+							</button>
+						{/if}
 					{/each}
 				{/if}
 			</div>
