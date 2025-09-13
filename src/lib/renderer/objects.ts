@@ -559,12 +559,12 @@ export class TemporaryObject {
 			other.mesh.rotation.set(0, 0, 0);
 			const profileDir = tan.clone().normalize();
 			const isCurvedProfile = this.getCatalogEntry().code.includes('C');
-
+			
 			const lineJunct = this.getCatalogEntry().line_juncts[0];
 			const lineDirection = new Vector3()
 				.subVectors(lineJunct.point2, lineJunct.point1)
 				.normalize();
-
+			
 			const isVerticalProfile = Math.abs(lineDirection.y) > Math.abs(lineDirection.x) && 
 									 Math.abs(lineDirection.y) > Math.abs(lineDirection.z);
 			
@@ -573,7 +573,7 @@ export class TemporaryObject {
 			if (isVerticalProfile) {
 				angleZ = lineDirection.y > 0 ? Math.PI / 2 : -Math.PI / 2;
 				angleY = 3 * Math.PI / 2;
-
+		
 				if (Math.abs(lineDirection.x) > 0.01 || Math.abs(lineDirection.z) > 0.01) {
 					angleY += Math.atan2(lineDirection.x, lineDirection.z);
 				}
@@ -586,24 +586,22 @@ export class TemporaryObject {
 			const junctionAngle = other.getCatalogEntry().juncts[0].angle * (Math.PI/180);
 			other.mesh.rotateY(junctionAngle);
 		}
-
+	
 		const pos2 = other.mesh.localToWorld(new Vector3().copy(j2));
-		let finalY = other.mesh.position.y + attachPoint.y - pos2.y;
-
-		if (isLightObject(other) && isSurfaceProfile(this, this.#state)) {
-			finalY -= 0.5;
-		}
-		else if (isLightObject(other) && is35mmSurfaceProfile(this, this.#state)) {
-			finalY -= 0.45;
-		}
-
 		other.mesh.position.copy({
 			x: other.mesh.position.x + attachPoint.x - pos2.x,
-			y: finalY,
+			y: other.mesh.position.y + attachPoint.y - pos2.y,
 			z: other.mesh.position.z + attachPoint.z - pos2.z,
 		});
 	
 		this.#state.frameObject(other);
+		
+		if (this.#state.handles && this.#state.handles.visible) {
+			setTimeout(() => {
+				this.#state.handles?.setVisible(false);
+				this.#state.handles?.setVisible(true);
+			}, 100);
+		}
 		
 		return j1.group;
 	}

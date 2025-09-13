@@ -199,38 +199,37 @@ export class HandleManager {
 			   code.includes('SRC') || code.includes('LRC');
 	}
 
+	/** Show handles that can connect to the given object */
 	selectObject(selectedCode: string): HandleManager {
-	this.clear();
-	const thisCatalog = this.#state.catalog[selectedCode];
-	const isSelectingRotatingConnector = this.isRotatingConnector(selectedCode);
+		this.clear();
+		const thisCatalog = this.#state.catalog[selectedCode];
 
-	for (const other of this.#state.getObjects()) {
-		Array.from(other
-			.getJunctions()
-			.entries())
-			.filter(([_, withObj]) => withObj === null)
-			.map(([i, _]) => [junctionCompatible(thisCatalog, other.getCatalogEntry(), i, this.#state), i])
-			.forEach(([thisJunctId, otherJunctId]) => {
-				const pos = new Vector3().copy(other.getCatalogEntry().juncts[otherJunctId]);
-				other.mesh?.localToWorld(pos);
-				
-				if (thisJunctId !== -1 && otherJunctId !== -1) {
-					// Se stiamo selezionando per attaccare a un connettore rotante,
-					// crea handle evidenziati
-					const handleIndex = this.createHandle(thisJunctId, otherJunctId, other);
-					this.moveHandle(handleIndex, pos);
-					
-					if (this.isRotatingConnector(other.getCatalogEntry().code)) {
-						this.enhanceHandleForRotatingConnector(handleIndex, other, otherJunctId);
+		for (const other of this.#state.getObjects()) {
+			Array.from(other
+				.getJunctions()
+				.entries())
+				.filter(([_, withObj]) => withObj === null)
+				.map(([i, _]) => [junctionCompatible(thisCatalog, other.getCatalogEntry(), i, this.#state), i])
+				.forEach(([thisJunctId, otherJunctId]) => {
+					const pos = new Vector3().copy(other.getCatalogEntry().juncts[otherJunctId]);
+					other.mesh?.localToWorld(pos);
+					if (thisJunctId !== -1 && otherJunctId !== -1) {
+						const handleIndex = this.createHandle(thisJunctId, otherJunctId, other);
+						this.moveHandle(handleIndex, pos);
+						
+						// Controlla se è un connettore rotante e applica l'enhancement
+						if (this.isRotatingConnector(other.getCatalogEntry().code)) {
+							this.enhanceHandleForRotatingConnector(handleIndex, other, otherJunctId);
+						}
+					} else {
+						this.moveDisabledHandle(this.createDisabledHandle(), pos);
 					}
-				} else {
-					this.moveDisabledHandle(this.createDisabledHandle(), pos);
-				}
-			});
+				});
 
 			Array.from(other
 				.getLineJunctions()
 				.entries())
+				.filter(([_, withObj]) => withObj === null) // AGGIUNGIAMO QUESTO FILTRO
 				.map(([i, _]) => [lineJunctionCompatible(thisCatalog, other.getCatalogEntry(), i, this.#state), i])
 				.forEach(([thisJunctId, otherJunctId]) => {
 					if (thisJunctId !== -1 && otherJunctId !== -1) {
@@ -283,6 +282,18 @@ export class HandleManager {
 			}
 		};
 		animate();
+	}
+
+	hideLineHandleForJunction(objectId: string, junctionIndex: number) {
+		this.lineHandles.forEach((handle, index) => {
+			if (handle.other.id === objectId && handle.otherJunctId === junctionIndex) {
+				handle.visible = false;
+			}
+		});
+
+		this.curves.forEach((curve, index) => {
+			curve.visible = false;
+		});
 	}
 
 	setVisible(visible: boolean) {
