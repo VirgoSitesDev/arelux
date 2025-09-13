@@ -205,10 +205,30 @@
 		}
 
 		const blob: string = await html2pdf()
-			.set({ margin: 6, html2canvas: { letterRendering: true, removeContainer: true } })
-			.from(await invoiceTemplate(page.data.supabase, page.data.tenant, email, items))
-			.output('blob')
-			.then(blobToBase64);
+				.set({ 
+					margin: 6, 
+					filename: 'preventivo-arelux.pdf',
+					html2canvas: { 
+						scale: 3,
+						useCORS: true,
+						allowTaint: true,
+						letterRendering: true, 
+						removeContainer: true,
+						width: 794,
+						height: 1123,
+						dpi: 300,
+						format: 'A4'
+					},
+					jsPDF: {
+						unit: 'mm',
+						format: 'a4',
+						orientation: 'portrait',
+						compress: true
+					}
+				})
+				.from(await invoiceTemplate(page.data.supabase, page.data.tenant, email, items))
+				.output('blob')
+				.then(blobToBase64);
 
 		const resp = await page.data.supabase.functions.invoke('send_email', {
 			body: {

@@ -305,29 +305,352 @@ export async function invoiceTemplate(
 	}
 	for (const obj of prices_query.data) prices[obj.code] = obj.price_cents;
 
-	const mappedItems = items
-		.map((i) => ({ ...i, price: prices[i.code] / 100 }))
-		.map((i) => ({ ...i, totalPrice: i.price * i.quantity }));
-	const subtotale = mappedItems.reduce((a, v) => a + v.totalPrice, 0);
-	const iva = 0.22;
-	const totale = subtotale + subtotale * iva;
+	Handlebars.registerHelper('euros', (amount: number) =>
+		Number.parseFloat(amount.toString()).toFixed(2).replace('.', ',')
+	);
+	
+	Handlebars.registerHelper('multiply', (a: number, b: number) => {
+		return a * b;
+	});
+	
+	Handlebars.registerHelper('divide', (a: number, b: number) => {
+		return b !== 0 ? a / b : 0;
+	});
 
-	const template = await fetch(
-		supabase.storage.from(tenant).getPublicUrl(`invoice-template.html`).data.publicUrl,
-	)
-		.then((resp) => resp.text())
-		.then((t) => Handlebars.compile(t));
+	const mappedItems = items.map((i) => {
+		const basePrice = prices[i.code] / 100;
+		const finalPrice = basePrice * 0.75;
+		const totalPrice = finalPrice * i.quantity;
+
+		const imageUrl = supabase.storage
+			.from(tenant)
+			.getPublicUrl(`images/${i.code}.webp`).data.publicUrl;
+		
+		return {
+			...i,
+			price: basePrice,
+			finalPrice,
+			totalPrice,
+			imageUrl
+		};
+	});
+		
+	const subtotale = mappedItems.reduce((a, v) => a + v.totalPrice, 0);
+	const iva = 22;
+	const ivaAmount = subtotale * (iva / 100);
+	const totale = subtotale + ivaAmount;
+
+	const templateHTML = `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Preventivo Arelux</title>
+		<style>
+			* { 
+				margin: 0; 
+				padding: 0; 
+				box-sizing: border-box; 
+			}
+			body { 
+				font-family: Arial, sans-serif; 
+				font-size: 11px; 
+				line-height: 1.2; 
+				color: #000; 
+				background: white; 
+			}
+			.container { 
+				max-width: 210mm; 
+				margin: 0 auto; 
+				padding: 10mm; 
+				background: white; 
+			}
+			.header { 
+				display: flex; 
+				justify-content: space-between; 
+				align-items: flex-start; 
+				margin-bottom: 20px; 
+				border-bottom: 1px solid #ddd; 
+				padding-bottom: 15px; 
+			}
+			.company-info { 
+				display: flex; 
+				align-items: flex-start; 
+				gap: 15px; 
+			}
+			.logo { 
+				width: 120px; 
+				height: 90px; 
+				display: flex; 
+				align-items: center; 
+				justify-content: center; 
+			}
+			.logo img { 
+				max-width: 120px; 
+				max-height: 90px; 
+				object-fit: contain; 
+			}
+			.company-details { 
+				font-size: 10px; 
+				line-height: 1.4; 
+			}
+			.company-details strong { 
+				font-size: 12px; 
+				display: block; 
+				margin-bottom: 3px; 
+			}
+			.header-right { 
+				text-align: right; 
+				font-size: 10px; 
+				line-height: 1.4; 
+			}
+			.offer-title { 
+				text-align: center; 
+				margin: 30px 0 20px 0; 
+			}
+			.offer-title h1 { 
+				font-size: 32px; 
+				font-weight: normal; 
+				margin-bottom: 8px; 
+				letter-spacing: 1px; 
+			}
+			.offer-title h2 { 
+				font-size: 14px; 
+				font-weight: normal; 
+				letter-spacing: 0.5px; 
+				color: #666; 
+			}
+			.products-table { 
+				width: 100%; 
+				border-collapse: collapse; 
+				margin: 25px 0; 
+				background: white; 
+			}
+			.products-table th { 
+				background: #f8f9fa; 
+				border: 1px solid #ddd; 
+				padding: 8px 6px; 
+				text-align: center; 
+				font-weight: bold; 
+				font-size: 10px; 
+				vertical-align: middle; 
+			}
+			.products-table td { 
+				border: 1px solid #ddd; 
+				padding: 8px 6px; 
+				text-align: center; 
+				vertical-align: middle; 
+				font-size: 9px; 
+			}
+			.product-image { 
+				width: 60px; 
+				height: 60px; 
+				object-fit: contain; 
+				background: #f8f9fa; 
+				border: 1px solid #e0e0e0; 
+				display: block; 
+				margin: 0 auto; 
+				border-radius: 4px; 
+			}
+			.product-info { 
+				text-align: left; 
+				width: 350px; 
+				padding-left: 8px; 
+			}
+			.product-code { 
+				font-weight: bold; 
+				font-size: 10px; 
+				margin-bottom: 4px; 
+				color: #333; 
+				text-align: left;
+			}
+			.product-desc { 
+				font-size: 8px; 
+				color: #666; 
+				line-height: 1.3; 
+				text-align: left;
+			}
+			.price { 
+				font-weight: bold; 
+				white-space: nowrap; 
+				color: #000;
+			}
+			.total-price { 
+				font-weight: bold; 
+				color: #000;
+			}
+			.item-number { 
+				font-weight: bold; 
+				color: #333;
+				font-size: 10px;
+			}
+			.totals-section { 
+				margin-top: 20px; 
+				display: flex; 
+				justify-content: flex-end; 
+			}
+			.totals-table { 
+				border-collapse: collapse; 
+				min-width: 250px; 
+			}
+			.totals-table td { 
+				padding: 6px 12px; 
+				border: none; 
+				text-align: right; 
+			}
+			.totals-table .label { 
+				font-weight: bold; 
+				text-align: left; 
+				border-bottom: 1px solid #ddd; 
+			}
+			.totals-table .value { 
+				font-weight: bold; 
+				border-bottom: 1px solid #ddd; 
+				min-width: 100px; 
+			}
+			.total-final { 
+				font-size: 12px; 
+				color: #000;
+				border-bottom: 3px double #000 !important; 
+			}
+			.footer { 
+				margin-top: 30px; 
+				padding-top: 15px; 
+				border-top: 1px solid #ddd; 
+				display: flex; 
+				justify-content: space-between; 
+				align-items: center; 
+				font-size: 10px; 
+			}
+			.validity { 
+				font-weight: bold; 
+			}
+			.copyright { 
+				color: #666; 
+			}
+			.page-info { 
+				position: absolute; 
+				bottom: 15px; 
+				right: 15px; 
+				font-size: 8px; 
+				color: #999; 
+			}
+			@media print { 
+				.container { 
+					margin: 0; 
+					padding: 0; 
+					max-width: none; 
+				} 
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="header">
+				<div class="company-info">
+					<div class="logo">
+						<img src="{{logoUrl}}" alt="Arelux Logo" onerror="this.style.display='none'; this.parentNode.innerHTML='<div style=\\'background: #333; color: white; padding: 20px 10px; text-align: center; font-weight: bold; font-size: 14px; border-radius: 4px;\\'>ARELUX</div>';">
+					</div>
+					<div class="company-details">
+						contact@arelux.ro<br>
+						+40 234 514 492<br>
+						Al. Tolstoi 12, 600093 Bacău, România
+					</div>
+				</div>
+				<div class="header-right">
+					<strong>Date: {{date}}</strong><br>
+					Client: {{client_email}}<br>
+					Quote #: {{invoice_number}}
+				</div>
+			</div>
+			<div class="offer-title">
+				<h1>Arelux offer</h1>
+				<h2>PROFESSIONAL LIGHTING SYSTEMS</h2>
+			</div>
+			<table class="products-table">
+				<thead>
+					<tr>
+						<th style="width: 40px;">#</th>
+						<th style="width: 80px;">Image</th>
+						<th style="width: 350px;">Product</th>
+						<th style="width: 80px;">Price</th>
+						<th style="width: 60px;">Units</th>
+						<th style="width: 100px;">Total price</th>
+					</tr>
+				</thead>
+				<tbody>
+					{{#each items}}
+					<tr>
+						<td class="item-number">{{@index1}}</td>
+						<td>
+							<img src="{{imageUrl}}" 
+								alt="{{code}}" 
+								class="product-image" 
+								onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjRjhGOUZBIiBzdHJva2U9IiNFMEUwRTAiLz4KPHN2ZyB4PSIxNSIgeT0iMTUiIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiByeD0iMiIgcnk9IjIiLz4KPGNpcmNsZSBjeD0iOC41IiBjeT0iOC4yIiByPSIxLjUiLz4KPHBvbHlsaW5lIHBvaW50cz0iMjEsMTUgMTYsMTAgNSwyMSIvPgo8L3N2Zz4KPC9zdmc+'; this.onerror=null;">
+						</td>
+						<td class="product-info">
+							<div class="product-code">{{code}}</div>
+							<div class="product-desc">
+								Professional lighting component<br>
+								High efficiency LED technology<br>
+								Premium quality materials
+							</div>
+						</td>
+						<td class="price">€{{euros finalPrice}}</td>
+						<td>{{quantity}}</td>
+						<td class="price total-price">€{{euros totalPrice}}</td>
+					</tr>
+					{{/each}}
+				</tbody>
+			</table>
+			<div class="totals-section">
+				<table class="totals-table">
+					<tr>
+						<td class="label">Transport without VAT:</td>
+						<td class="value">€0,00</td>
+					</tr>
+					<tr>
+						<td class="label">Subtotal without VAT:</td>
+						<td class="value">€{{euros subtotale}}</td>
+					</tr>
+					<tr>
+						<td class="label">VAT ({{iva}}%):</td>
+						<td class="value">€{{euros (multiply subtotale (divide iva 100))}}</td>
+					</tr>
+					<tr>
+						<td class="label total-final">Total with VAT:</td>
+						<td class="value total-final">€{{euros totale}}</td>
+					</tr>
+				</table>
+			</div>
+			<div class="footer">
+				<div class="validity">The offer is valid for 30 days.</div>
+				<div class="copyright">© Copyright 2024 Arelux SRL</div>
+			</div>
+		</div>
+	</body>
+	</html>`;
+
+	const template = Handlebars.compile(templateHTML);
+	
+	const now = new Date();
+	const dateStr = now.toLocaleDateString('it-IT');
+	const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+	// URL del logo Arelux da Supabase
+	const logoUrl = supabase.storage
+		.from(tenant)
+		.getPublicUrl(`${tenant}.png`).data.publicUrl;
 
 	return template({
-		date: new Date(Date.now()).toLocaleString().split(',')[0],
-		invoice_number: '8/18/12',
-		client_id: '202020',
+		date: dateStr,
+		time: timeStr,
+		invoice_number: crypto.randomUUID().slice(0, 8),
 		client_email: to,
-
+		logoUrl,
 		items: mappedItems,
-
 		subtotale,
-		iva: iva * 100,
+		iva,
 		totale,
 	});
 }
