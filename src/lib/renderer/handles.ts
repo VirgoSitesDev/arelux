@@ -12,12 +12,15 @@ import {
 	TubeGeometry,
 	Vector2,
 	Vector3,
+	RingGeometry,
+	CylinderGeometry,
 	type Camera,
 	type NormalBufferAttributes,
 	type Object3DEventMap,
 	type Scene,
 	type Vector3Like,
 } from 'three';
+
 import type { Renderer } from './renderer';
 import type { CatalogEntry } from '../../app';
 import type { TemporaryObject } from './objects';
@@ -156,6 +159,25 @@ export class HandleManager {
 
 	/** Clear the handles and angles for the Single scene. Should probably be called during initialization */
 	clear() {
+		const objectsToRemove: any[] = [];
+		this.#scene.traverse((child) => {
+			if (child instanceof Mesh && 
+				(child.geometry instanceof RingGeometry || child instanceof ArrowHelper)) {
+				objectsToRemove.push(child);
+			}
+		});
+		
+		objectsToRemove.forEach(obj => {
+			this.#scene.remove(obj);
+			if (obj.geometry) obj.geometry.dispose();
+			if (obj.material) {
+				if (Array.isArray(obj.material)) {
+					obj.material.forEach((mat: { dispose: () => any; }) => mat.dispose());
+				} else {
+					obj.material.dispose();
+				}
+			}
+		});
 		this.#scene.remove(...this.handles);
 		this.#scene.remove(...this.lineHandles);
 		this.#scene.remove(...this.angles);
@@ -171,26 +193,40 @@ export class HandleManager {
 		this.disabledLineHandles.splice(0, this.disabledLineHandles.length);
 	}
 
-	/** Show handles that can connect to the given object */
-	selectObject(selectedCode: string): HandleManager {
-		this.clear();
-		const thisCatalog = this.#state.catalog[selectedCode];
+	
+	private isRotatingConnector(code: string): boolean {
+		return code === 'XNS01SRC' || code === 'XNS01LRC' || 
+			   code.includes('SRC') || code.includes('LRC');
+	}
 
-		for (const other of this.#state.getObjects()) {
-			Array.from(other
-				.getJunctions()
-				.entries())
-				.filter(([_, withObj]) => withObj === null)
-				.map(([i, _]) => [junctionCompatible(thisCatalog, other.getCatalogEntry(), i, this.#state), i])
-				.forEach(([thisJunctId, otherJunctId]) => {
-					const pos = new Vector3().copy(other.getCatalogEntry().juncts[otherJunctId]);
-					other.mesh?.localToWorld(pos);
-					if (thisJunctId !== -1 && otherJunctId !== -1) {
-						this.moveHandle(this.createHandle(thisJunctId, otherJunctId, other), pos);
-					} else {
-						this.moveDisabledHandle(this.createDisabledHandle(), pos);
+	selectObject(selectedCode: string): HandleManager {
+	this.clear();
+	const thisCatalog = this.#state.catalog[selectedCode];
+	const isSelectingRotatingConnector = this.isRotatingConnector(selectedCode);
+
+	for (const other of this.#state.getObjects()) {
+		Array.from(other
+			.getJunctions()
+			.entries())
+			.filter(([_, withObj]) => withObj === null)
+			.map(([i, _]) => [junctionCompatible(thisCatalog, other.getCatalogEntry(), i, this.#state), i])
+			.forEach(([thisJunctId, otherJunctId]) => {
+				const pos = new Vector3().copy(other.getCatalogEntry().juncts[otherJunctId]);
+				other.mesh?.localToWorld(pos);
+				
+				if (thisJunctId !== -1 && otherJunctId !== -1) {
+					// Se stiamo selezionando per attaccare a un connettore rotante,
+					// crea handle evidenziati
+					const handleIndex = this.createHandle(thisJunctId, otherJunctId, other);
+					this.moveHandle(handleIndex, pos);
+					
+					if (this.isRotatingConnector(other.getCatalogEntry().code)) {
+						this.enhanceHandleForRotatingConnector(handleIndex, other, otherJunctId);
 					}
-				});
+				} else {
+					this.moveDisabledHandle(this.createDisabledHandle(), pos);
+				}
+			});
 
 			Array.from(other
 				.getLineJunctions()
@@ -206,6 +242,47 @@ export class HandleManager {
 		}
 
 		return this;
+	}
+
+	private enhanceHandleForRotatingConnector(handleIndex: number, connectorObj: TemporaryObject, junctionId: number): void {
+		if (handleIndex >= this.handles.length) return;
+		
+		const handle = this.handles[handleIndex];
+		const junction = connectorObj.getCatalogEntry().juncts[junctionId];
+		const direction = this.#state.angleHelper(junction.angle + 30);
+		
+		const arrowLength = 3;
+		const arrowColor = 0x333333;
+		const arrow = new ArrowHelper(
+			direction.normalize(),
+			handle.position,
+			arrowLength,
+			arrowColor,
+			arrowLength * 0.3,
+			arrowLength * 0.2
+		);
+		arrow.renderOrder = 3;
+		
+		this.#scene.add(arrow);
+		
+		handle.material.color.set(0xFECA0A);
+		handle.scale.set(1.2, 1.2, 1.2);
+		
+		const newHandlePosition = handle.position.clone().add(direction.clone().multiplyScalar(1.0));
+		handle.position.copy(newHandlePosition);
+		
+		const originalScale = handle.scale.clone();
+		let time = 0;
+		const animate = () => {
+			time += 0.05;
+			const scaleFactor = 1 + Math.sin(time) * 0.1;
+			handle.scale.copy(originalScale).multiplyScalar(scaleFactor);
+			
+			if (handle.visible) {
+				requestAnimationFrame(animate);
+			}
+		};
+		animate();
 	}
 
 	setVisible(visible: boolean) {
@@ -378,6 +455,7 @@ export class HandleManager {
 export class TemporaryHandleMesh extends Mesh<SphereGeometry, MeshBasicMaterial> {
 	readonly isTemporaryHandle: true = true;
 	readonly isDisabled: boolean;
+	private isEnhanced: boolean = false;
 
 	constructor(disabled?: boolean) {
 		super();
@@ -385,8 +463,30 @@ export class TemporaryHandleMesh extends Mesh<SphereGeometry, MeshBasicMaterial>
 		this.isDisabled = disabled === true;
 		this.material = new MeshBasicMaterial({ color: this.isDisabled ? 0xff0000 : 0xfeca0a });
 		this.material.depthTest = false;
-		this.geometry = new SphereGeometry(0.5, 32, 32);
+		this.geometry = new SphereGeometry(0.3, 16, 16);
 		this.renderOrder = 1;
+	}
+
+	enhance(): void {
+		if (!this.isEnhanced && !this.isDisabled) {
+			this.isEnhanced = true;
+			this.material.color.set(0xfeca0a); // MANTIENI il giallo
+			this.scale.set(1.3, 1.3, 1.3); // Ingrandimento più moderato
+			
+			// Aggiungi solo un leggero effetto glow mantenendo il giallo
+			this.material.transparent = true;
+			this.material.opacity = 0.95;
+		}
+	}
+
+	// Metodo per rimuovere l'evidenziazione
+	unenhance(): void {
+		if (this.isEnhanced) {
+			this.isEnhanced = false;
+			this.material.color.set(0xfeca0a); // Mantieni sempre giallo
+			this.scale.set(1, 1, 1);
+			this.material.opacity = 1;
+		}
 	}
 
 	dispose() {

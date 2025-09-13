@@ -33,6 +33,8 @@ import {
 	GridHelper, 
 	Group, 
 	PlaneGeometry,
+	RingGeometry,
+	CylinderGeometry,
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -658,6 +660,129 @@ async function loadExr() {
 	return exr;
 }
 
+class ConnectorVisualizationManager {
+	private renderer: Renderer;
+	private scene: Scene;
+	private enhancementElements: Object3D[] = [];
+
+	constructor(renderer: Renderer, scene: Scene) {
+		this.renderer = renderer;
+		this.scene = scene;
+	}
+
+	// Verifica se il codice rappresenta un connettore rotante
+	private isRotatingConnector(code: string): boolean {
+		return code === 'XNS01SRC' || code === 'XNS01LRC' || 
+			   code.includes('SRC') || code.includes('LRC') ||
+			   code.toLowerCase().includes('rotante');
+	}
+
+	// Evidenzia i punti di connessione per i connettori rotanti
+	enhanceRotatingConnectorHandles(selectedCode: string): void {
+		if (!this.isRotatingConnector(selectedCode)) return;
+
+		this.clearEnhancements();
+
+		// Trova tutti i connettori rotanti nella scena
+		const rotatingConnectors = this.renderer.getObjects().filter(obj => 
+			this.isRotatingConnector(obj.getCatalogEntry().code)
+		);
+
+		for (const connector of rotatingConnectors) {
+			this.enhanceConnectorJunctions(connector);
+		}
+	}
+
+	// Evidenzia le junction di un singolo connettore
+	private enhanceConnectorJunctions(connector: TemporaryObject): void {
+		if (!connector.mesh) return;
+
+		const catalogEntry = connector.getCatalogEntry();
+		const junctions = connector.getJunctions();
+
+		catalogEntry.juncts.forEach((junction, index) => {
+			// Solo per junction libere (non connesse)
+			if (junctions[index] === null) {
+				this.createEnhancedVisualization(connector, junction, index);
+			}
+		});
+	}
+
+	private createEnhancedVisualization(
+		connector: TemporaryObject, 
+		junction: any, 
+		junctionIndex: number
+	): void {
+		if (!connector.mesh) return;
+	
+		const worldPosition = connector.mesh.localToWorld(new Vector3().copy(junction));
+		const direction = this.renderer.angleHelper(junction.angle + 30);
+	
+		const arrowHelper = new ArrowHelper(
+			direction.normalize(),
+			worldPosition,
+			4,
+			0xFFFF00,
+			2,
+			1
+		);
+		arrowHelper.renderOrder = 11;
+	
+		const clickPointGeometry = new SphereGeometry(0.8, 16, 16);
+		const clickPointMaterial = new MeshBasicMaterial({
+			color: 0xFECA0A,
+			transparent: true,
+			opacity: 0.9,
+			depthTest: false
+		});
+		const clickPoint = new Mesh(clickPointGeometry, clickPointMaterial);
+		clickPoint.position.copy(worldPosition.clone().add(direction.clone().multiplyScalar(3.0)));
+		clickPoint.renderOrder = 12;
+	
+		const labelGeometry = new SphereGeometry(0.3, 16, 16);
+		const labelMaterial = new MeshBasicMaterial({
+			color: 0xcccccc,
+			transparent: true,
+			opacity: 0.9,
+			depthTest: false
+		});
+		const label = new Mesh(labelGeometry, labelMaterial);
+		label.position.copy(worldPosition);
+		label.position.y += 2;
+		label.renderOrder = 13;
+	
+		this.scene.add(arrowHelper);
+		this.scene.add(clickPoint);
+		this.scene.add(label);
+	
+		this.enhancementElements.push(arrowHelper, clickPoint, label);
+	}
+
+	clearEnhancements(): void {
+		for (const element of this.enhancementElements) {
+			this.scene.remove(element);
+			
+			// Pulisci le risorse per Mesh
+			if (element instanceof Mesh) {
+				if (element.geometry) element.geometry.dispose();
+				if (element.material) {
+					if (Array.isArray(element.material)) {
+						element.material.forEach(mat => mat.dispose());
+					} else {
+						element.material.dispose();
+					}
+				}
+			}
+			
+			// Pulisci le risorse per ArrowHelper
+			if (element instanceof ArrowHelper) {
+				element.dispose();
+			}
+		}
+		this.enhancementElements = [];
+	}
+}
+
 export class Renderer {
 	readonly supabase: SupabaseClient<Database>;
 	readonly tenant: string;
@@ -671,6 +796,7 @@ export class Renderer {
 	private virtualRoomManager: VirtualRoomManager;
 	private clickHandler: ObjectClickHandler;
 	private configurationManager: ConfigurationManager;
+	private connectorVisualizationManager: ConnectorVisualizationManager;
 
 	#webgl!: WebGLRenderer;
 	#scene: Scene;
@@ -764,6 +890,8 @@ export class Renderer {
 		this.loader = new GLTFLoader();
 		this.loader.setDRACOLoader(dracoLoader);
 
+		this.connectorVisualizationManager = new ConnectorVisualizationManager(this, this.#scene);
+
 		const singleScene = new Scene();
 		this.#scenes = {
 			normal: { scene: this.#scene, objects: this.#objects, handles: this.handles },
@@ -777,6 +905,14 @@ export class Renderer {
 
 	getCamera(): Camera {
 		return this.#camera;
+	}
+
+	enhanceRotatingConnectors(selectedCode: string): void {
+		this.connectorVisualizationManager.enhanceRotatingConnectorHandles(selectedCode);
+	}
+
+	clearConnectorEnhancements(): void {
+		this.connectorVisualizationManager.clearEnhancements();
 	}
 
 	reinitWebgl(canvas: HTMLCanvasElement) {

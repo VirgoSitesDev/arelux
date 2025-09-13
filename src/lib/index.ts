@@ -63,7 +63,9 @@ export async function finishEdit(
 		isCustomLength?: boolean;
 	},
 ) {
-	renderer.setScene('normal');	
+	renderer.setScene('normal');
+	renderer.clearConnectorEnhancements();
+	
 	const state = stateOverride ?? page.state;
 	
 	const tempPosition = obj.mesh?.position.clone();

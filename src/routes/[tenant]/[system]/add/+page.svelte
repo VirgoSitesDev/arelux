@@ -162,79 +162,103 @@
 	);
 
 	$effect(() => {
-		if (chosenFamily === undefined || page.state.chosenItem !== undefined) {
-			renderer?.handles.setVisible(false);
-			renderer?.setOpacity(1);
-		} else {
-			if (lightSubfamilies().length > 0 || (mode === 'Luci' && lightFamilies().length > 0)) {
-				if (selectedPower) {
-					renderer?.handles.selectObject(selectedPower.sampleCode).setVisible(true);
-				} else {
-					renderer?.handles.setVisible(false);
+	if (chosenFamily === undefined || page.state.chosenItem !== undefined) {
+		renderer?.handles.setVisible(false);
+		renderer?.setOpacity(1);
+		renderer?.clearConnectorEnhancements();
+	} else {
+		const family = data.families[chosenFamily];
+		const isRotatingConnector = family.items.some(item => 
+			item.code === 'XNS01SRC' || item.code === 'XNS01LRC' || 
+			item.code.includes('SRC') || item.code.includes('LRC')
+		);
+		
+		if (lightSubfamilies().length > 0 || (mode === 'Luci' && lightFamilies().length > 0)) {
+			if (selectedPower) {
+				renderer?.handles.selectObject(selectedPower.sampleCode).setVisible(true);
+				if (isRotatingConnector && !temporary) {
+					renderer?.enhanceRotatingConnectors(selectedPower.sampleCode);
 				}
 			} else {
-				renderer?.handles.selectObject(data.families[chosenFamily].items[0].code).setVisible(true);
+				renderer?.handles.setVisible(false);
+				renderer?.clearConnectorEnhancements();
+			}
+		} else {
+			if (isRotatingConnector && !temporary) {
+				const firstItem = family.items[0];
+				renderer?.enhanceRotatingConnectors(firstItem.code);
 			}
 			
-			renderer?.setClickCallback((handle) => {
-				let reference: typeof page.state.reference = {
-					typ: 'junction',
+			renderer?.handles.selectObject(data.families[chosenFamily].items[0].code).setVisible(true);
+		}
+		
+		renderer?.setClickCallback((handle) => {
+			let reference: typeof page.state.reference = {
+				typ: 'junction',
+				id: handle.other.id,
+				junction: handle.otherJunctId,
+			};
+
+			if ((handle as LineHandleMesh).isLineHandle) {
+				reference = {
+					typ: 'line',
 					id: handle.other.id,
 					junction: handle.otherJunctId,
+					pos: {
+						x: (handle as LineHandleMesh).clickedPoint?.x ?? 0,
+						y: (handle as LineHandleMesh).clickedPoint?.y ?? 0,
+						z: (handle as LineHandleMesh).clickedPoint?.z ?? 0,
+					},
 				};
+			}
 
-				if ((handle as LineHandleMesh).isLineHandle) {
-					reference = {
-						typ: 'line',
-						id: handle.other.id,
-						junction: handle.otherJunctId,
-						pos: {
-							x: (handle as LineHandleMesh).clickedPoint?.x ?? 0,
-							y: (handle as LineHandleMesh).clickedPoint?.y ?? 0,
-							z: (handle as LineHandleMesh).clickedPoint?.z ?? 0,
-						},
-					};
-				}
+			let chosenItem;
+			if (mode === 'Luci' && selectedPower) {
+				chosenItem = selectedPower.sampleCode;
+			} else if (chosenFamily && selectedPower && selectedSubfamily) {
+				const targetItem = data.families[chosenFamily].items.find(
+					item => item.code.startsWith(selectedPower!.baseModel) && 
+						   item.code.includes(selectedSubfamily!.code)
+				);
+				chosenItem = targetItem?.code || data.families[chosenFamily].items[0].code;
+			} else if (chosenFamily) {
+				chosenItem = data.families[chosenFamily].items[0].code;
+			} else {
+				console.error('No chosen item found');
+				return;
+			}
 
-				let chosenItem;
-				if (mode === 'Luci' && selectedPower) {
-					chosenItem = selectedPower.sampleCode;
-				} else if (chosenFamily && selectedPower && selectedSubfamily) {
-					const targetItem = data.families[chosenFamily].items.find(
-						item => item.code.startsWith(selectedPower!.baseModel) && 
-						       item.code.includes(selectedSubfamily!.code)
-					);
-					chosenItem = targetItem?.code || data.families[chosenFamily].items[0].code;
-				} else if (chosenFamily) {
-					chosenItem = data.families[chosenFamily].items[0].code;
-				} else {
-					console.error('No chosen item found');
-					return;
-				}
-
-				let familyForItem = chosenFamily;
-				if (mode === 'Luci' && !chosenFamily) {
-					for (const [famCode, fam] of Object.entries(data.families)) {
-						if (fam.items.some(i => i.code === chosenItem)) {
-							familyForItem = famCode;
-							break;
-						}
+			let familyForItem = chosenFamily;
+			if (mode === 'Luci' && !chosenFamily) {
+				for (const [famCode, fam] of Object.entries(data.families)) {
+					if (fam.items.some(i => i.code === chosenItem)) {
+						familyForItem = famCode;
+						break;
 					}
 				}
+			}
 
-				if (!familyForItem) {
-					console.error('No family found for item:', chosenItem);
-					return;
-				}
+			if (!familyForItem) {
+				console.error('No family found for item:', chosenItem);
+				return;
+			}
 
-				pushState('', {
-					chosenFamily: familyForItem,
-					chosenItem: chosenItem,
-					reference,
-				});
+			renderer?.clearConnectorEnhancements();
+
+			pushState('', {
+				chosenFamily: familyForItem,
+				chosenItem: chosenItem,
+				reference,
 			});
-		}
-	});
+		});
+	}
+});
+
+$effect(() => {
+	if (temporary !== null) {
+		renderer?.clearConnectorEnhancements();
+	}
+});
 
 	let temporary: RendererObject | null = null;
 	let group: string | null = $state(null);
@@ -289,7 +313,7 @@
 	
 	beforeNavigate(() => {
 		if (temporary) renderer?.removeObject(temporary);
-		
+		renderer?.clearConnectorEnhancements();
 		renderer?.setOpacity(1);
 	});
 
