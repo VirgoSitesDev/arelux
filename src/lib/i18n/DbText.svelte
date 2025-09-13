@@ -13,11 +13,8 @@
         class?: string;
         element?: 'span' | 'div' | 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
     } = $props();
-    
-    // Store reattivo che si aggiorna automaticamente quando cambia la lingua
-    // MODIFICA: Ora è reattivo a $locale
+
     let translatedText = $derived.by(() => {
-        // Accesso reattivo a $locale
         const currentLocale = $locale;
         return text ? translateDatabaseText(text) : fallback;
     });

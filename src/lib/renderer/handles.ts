@@ -30,7 +30,6 @@ function clamp(num: number, min: number, max: number): number {
 	return Math.min(Math.max(num, min), max);
 }
 
-// Funzione helper per trovare la famiglia di un oggetto
 function findObjectFamily(objectCode: string, families: Record<string, any>): any | null {
 	for (const family of Object.values(families)) {
 		if (family.items && family.items.some((item: any) => item.code === objectCode)) {
@@ -40,18 +39,14 @@ function findObjectFamily(objectCode: string, families: Record<string, any>): an
 	return null;
 }
 
-// Funzione per controllare se due famiglie possono connettersi
 function canFamiliesConnect(thisObj: CatalogEntry, otherObj: CatalogEntry, renderer: Renderer): boolean {
 	const thisFamily = findObjectFamily(thisObj.code, renderer.families);
 	const otherFamily = findObjectFamily(otherObj.code, renderer.families);
 	
 	if (!thisFamily || !otherFamily) {
-		return true; // Se non troviamo le famiglie, permettiamo la connessione (fallback)
+		return true;
 	}
 	
-	console.log(thisFamily);
-	console.log(otherFamily);
-	// Impedire connessioni tra profili superficiali normali e con sospensione 35mm
 	const isSuperficiali1 = thisFamily.displayName === "Profili superficiali";
 	const isSuperficiali35mm1 = thisFamily.displayName === "Profili superficiali 35mm";
 	const isSuperficiali2 = otherFamily.displayName === "Profili superficiali";
@@ -70,7 +65,6 @@ function junctionCompatible(
 	otherJunctId: number,
 	renderer: Renderer,
 ): number {
-	// Prima controlla se le famiglie possono connettersi
 	if (!canFamiliesConnect(thisObj, otherObj, renderer)) {
 		return -1;
 	}
@@ -84,7 +78,6 @@ function lineJunctionCompatible(
 	otherJunctId: number,
 	renderer: Renderer,
 ): number {
-	// Prima controlla se le famiglie possono connettersi
 	if (!canFamiliesConnect(thisObj, otherObj, renderer)) {
 		return -1;
 	}
@@ -146,6 +139,7 @@ export class HandleManager {
 	disabledLineHandles: LineHandleMesh[] = [];
 	lineHandles: LineHandleMesh[] = [];
 	angles: ArrowHelper[] = [];
+	enhancementArrows: ArrowHelper[] = [];
 	visible: boolean = false;
 	curves: CurveMesh[] = [];
 	hovering: TemporaryHandleMesh | LineHandleMesh | undefined;
@@ -157,33 +151,24 @@ export class HandleManager {
 		this.#raycaster = new Raycaster();
 	}
 
-	/** Clear the handles and angles for the Single scene. Should probably be called during initialization */
 	clear() {
-		const objectsToRemove: any[] = [];
-		this.#scene.traverse((child) => {
-			if (child instanceof Mesh && 
-				(child.geometry instanceof RingGeometry || child instanceof ArrowHelper)) {
-				objectsToRemove.push(child);
-			}
-		});
-		
-		objectsToRemove.forEach(obj => {
-			this.#scene.remove(obj);
-			if (obj.geometry) obj.geometry.dispose();
-			if (obj.material) {
-				if (Array.isArray(obj.material)) {
-					obj.material.forEach((mat: { dispose: () => any; }) => mat.dispose());
-				} else {
-					obj.material.dispose();
-				}
-			}
-		});
 		this.#scene.remove(...this.handles);
 		this.#scene.remove(...this.lineHandles);
 		this.#scene.remove(...this.angles);
 		this.#scene.remove(...this.curves);
+		this.#scene.remove(...this.enhancementArrows);
+		
+		for (const angle of this.angles) {
+			angle.dispose();
+		}
+		
+		for (const arrow of this.enhancementArrows) {
+			arrow.dispose();
+		}
+		
 		this.handles.splice(0, this.handles.length);
 		this.angles.splice(0, this.angles.length);
+		this.enhancementArrows.splice(0, this.enhancementArrows.length);
 		this.curves.splice(0, this.curves.length);
 		this.lineHandles.splice(0, this.lineHandles.length);
 
@@ -192,55 +177,10 @@ export class HandleManager {
 		this.disabledHandles.splice(0, this.disabledHandles.length);
 		this.disabledLineHandles.splice(0, this.disabledLineHandles.length);
 	}
-
 	
 	private isRotatingConnector(code: string): boolean {
 		return code === 'XNS01SRC' || code === 'XNS01LRC' || 
 			   code.includes('SRC') || code.includes('LRC');
-	}
-
-	/** Show handles that can connect to the given object */
-	selectObject(selectedCode: string): HandleManager {
-		this.clear();
-		const thisCatalog = this.#state.catalog[selectedCode];
-
-		for (const other of this.#state.getObjects()) {
-			Array.from(other
-				.getJunctions()
-				.entries())
-				.filter(([_, withObj]) => withObj === null)
-				.map(([i, _]) => [junctionCompatible(thisCatalog, other.getCatalogEntry(), i, this.#state), i])
-				.forEach(([thisJunctId, otherJunctId]) => {
-					const pos = new Vector3().copy(other.getCatalogEntry().juncts[otherJunctId]);
-					other.mesh?.localToWorld(pos);
-					if (thisJunctId !== -1 && otherJunctId !== -1) {
-						const handleIndex = this.createHandle(thisJunctId, otherJunctId, other);
-						this.moveHandle(handleIndex, pos);
-						
-						// Controlla se è un connettore rotante e applica l'enhancement
-						if (this.isRotatingConnector(other.getCatalogEntry().code)) {
-							this.enhanceHandleForRotatingConnector(handleIndex, other, otherJunctId);
-						}
-					} else {
-						this.moveDisabledHandle(this.createDisabledHandle(), pos);
-					}
-				});
-
-			Array.from(other
-				.getLineJunctions()
-				.entries())
-				.filter(([_, withObj]) => withObj === null) // AGGIUNGIAMO QUESTO FILTRO
-				.map(([i, _]) => [lineJunctionCompatible(thisCatalog, other.getCatalogEntry(), i, this.#state), i])
-				.forEach(([thisJunctId, otherJunctId]) => {
-					if (thisJunctId !== -1 && otherJunctId !== -1) {
-						this.createLineHandle(thisJunctId, otherJunctId, other);
-					} else {
-						this.createDisabledLineHandle(thisJunctId, otherJunctId, other);
-					}
-				});
-		}
-
-		return this;
 	}
 
 	private enhanceHandleForRotatingConnector(handleIndex: number, connectorObj: TemporaryObject, junctionId: number): void {
@@ -261,8 +201,10 @@ export class HandleManager {
 			arrowLength * 0.2
 		);
 		arrow.renderOrder = 3;
+		arrow.visible = this.visible;
 		
 		this.#scene.add(arrow);
+		this.enhancementArrows.push(arrow);
 		
 		handle.material.color.set(0xFECA0A);
 		handle.scale.set(1.2, 1.2, 1.2);
@@ -277,11 +219,51 @@ export class HandleManager {
 			const scaleFactor = 1 + Math.sin(time) * 0.1;
 			handle.scale.copy(originalScale).multiplyScalar(scaleFactor);
 			
-			if (handle.visible) {
+			if (handle.visible && this.visible) {
 				requestAnimationFrame(animate);
 			}
 		};
 		animate();
+	}
+
+	selectObject(selectedCode: string): HandleManager {
+		this.clear();
+		const thisCatalog = this.#state.catalog[selectedCode];
+
+		for (const other of this.#state.getObjects()) {
+			Array.from(other
+				.getJunctions()
+				.entries())
+				.filter(([_, withObj]) => withObj === null)
+				.map(([i, _]) => [junctionCompatible(thisCatalog, other.getCatalogEntry(), i, this.#state), i])
+				.forEach(([thisJunctId, otherJunctId]) => {
+					const pos = new Vector3().copy(other.getCatalogEntry().juncts[otherJunctId]);
+					other.mesh?.localToWorld(pos);
+					if (thisJunctId !== -1 && otherJunctId !== -1) {
+						const handleIndex = this.createHandle(thisJunctId, otherJunctId, other);
+						this.moveHandle(handleIndex, pos);
+						if (this.isRotatingConnector(other.getCatalogEntry().code)) {
+							this.enhanceHandleForRotatingConnector(handleIndex, other, otherJunctId);
+						}
+					} else {
+						this.moveDisabledHandle(this.createDisabledHandle(), pos);
+					}
+				});
+
+			Array.from(other
+				.getLineJunctions()
+				.entries())
+				.map(([i, _]) => [lineJunctionCompatible(thisCatalog, other.getCatalogEntry(), i, this.#state), i])
+				.forEach(([thisJunctId, otherJunctId]) => {
+					if (thisJunctId !== -1 && otherJunctId !== -1) {
+						this.createLineHandle(thisJunctId, otherJunctId, other);
+					} else {
+						this.createDisabledLineHandle(thisJunctId, otherJunctId, other);
+					}
+				});
+		}
+
+		return this;
 	}
 
 	hideLineHandleForJunction(objectId: string, junctionIndex: number) {
@@ -302,6 +284,22 @@ export class HandleManager {
 		for (const handle of this.lineHandles) handle.visible = visible;
 		for (const handle of this.disabledHandles) handle.visible = visible;
 		for (const handle of this.disabledLineHandles) handle.visible = visible;
+		for (const arrow of this.enhancementArrows) arrow.visible = visible;
+		
+		if (!visible) {
+			for (const angle of this.angles) {
+				this.#scene.remove(angle);
+				angle.dispose();
+			}
+			this.angles.splice(0, this.angles.length);
+			
+			for (const arrow of this.enhancementArrows) {
+				this.#scene.remove(arrow);
+				arrow.dispose();
+			}
+			this.enhancementArrows.splice(0, this.enhancementArrows.length);
+		}
+		
 		this.visible = visible;
 	}
 
@@ -481,20 +479,18 @@ export class TemporaryHandleMesh extends Mesh<SphereGeometry, MeshBasicMaterial>
 	enhance(): void {
 		if (!this.isEnhanced && !this.isDisabled) {
 			this.isEnhanced = true;
-			this.material.color.set(0xfeca0a); // MANTIENI il giallo
-			this.scale.set(1.3, 1.3, 1.3); // Ingrandimento più moderato
+			this.material.color.set(0xfeca0a);
+			this.scale.set(1.3, 1.3, 1.3);
 			
-			// Aggiungi solo un leggero effetto glow mantenendo il giallo
 			this.material.transparent = true;
 			this.material.opacity = 0.95;
 		}
 	}
 
-	// Metodo per rimuovere l'evidenziazione
 	unenhance(): void {
 		if (this.isEnhanced) {
 			this.isEnhanced = false;
-			this.material.color.set(0xfeca0a); // Mantieni sempre giallo
+			this.material.color.set(0xfeca0a);
 			this.scale.set(1, 1, 1);
 			this.material.opacity = 1;
 		}

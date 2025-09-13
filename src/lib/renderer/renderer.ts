@@ -670,7 +670,6 @@ class ConnectorVisualizationManager {
 		this.scene = scene;
 	}
 
-	// Verifica se il codice rappresenta un connettore rotante
 	private isRotatingConnector(code: string): boolean {
 		return code === 'XNS01SRC' || code === 'XNS01LRC' || 
 			   code.includes('SRC') || code.includes('LRC') ||
@@ -678,54 +677,38 @@ class ConnectorVisualizationManager {
 	}
 
 	enhanceRotatingConnectorHandles(selectedCode: string): void {
-		console.log('🎯 CREATING ENHANCEMENTS for:', selectedCode);
 		
 		if (!this.isRotatingConnector(selectedCode)) {
-			console.log('❌ Not a rotating connector, skipping');
 			return;
 		}
 	
 		this.clearEnhancements();
-	
-		// AGGIUNGI QUESTO LOG
-		console.log('🔍 Cercando connettori rotanti nella scena...');
+
 		const allObjects = this.renderer.getObjects();
-		console.log('📊 Oggetti totali nella scena:', allObjects.length);
 		
 		allObjects.forEach((obj, index) => {
 			const code = obj.getCatalogEntry().code;
 			const isRotating = this.isRotatingConnector(code);
-			console.log(`Oggetto ${index}: ${code} - È rotante: ${isRotating}`);
 		});
 	
 		const rotatingConnectors = this.renderer.getObjects().filter(obj => 
 			this.isRotatingConnector(obj.getCatalogEntry().code)
 		);
-		
-		console.log('🎮 Connettori rotanti trovati:', rotatingConnectors.length);
 	
 		for (const connector of rotatingConnectors) {
-			console.log('🔧 Processando connettore:', connector.getCatalogEntry().code);
 			this.enhanceConnectorJunctions(connector);
 		}
 	}
 
 	private enhanceConnectorJunctions(connector: TemporaryObject): void {
-		console.log('🔍 enhanceConnectorJunctions per connector:', connector.getCatalogEntry().code);
-		
 		if (!connector.mesh) {
-			console.log('❌ Connector mesh non disponibile');
 			return;
 		}
 	
 		const catalogEntry = connector.getCatalogEntry();
 		const junctions = connector.getJunctions();
 	
-		console.log('📍 Junction totali:', catalogEntry.juncts.length);
-		console.log('🔗 Junction occupate:', junctions.filter(j => j !== null).length);
-	
 		catalogEntry.juncts.forEach((junction, index) => {
-			console.log(`Junction ${index}: libera=${junctions[index] === null}`);
 			if (junctions[index] === null) {
 				this.createEnhancedVisualization(connector, junction, index);
 			}
@@ -737,9 +720,7 @@ class ConnectorVisualizationManager {
 		junction: any, 
 		junctionIndex: number
 	): void {
-		console.log('🎨 createEnhancedVisualization chiamato per junction:', junctionIndex);
 		if (!connector.mesh) {
-			console.log('❌ Connector mesh non disponibile');
 			return;
 		}
 	
@@ -782,20 +763,14 @@ class ConnectorVisualizationManager {
 		this.scene.add(arrowHelper);
 		this.scene.add(clickPoint);
 		this.scene.add(label);
-	
-		console.log('➕ Aggiungendo elementi alla scena e all\'array');
 		this.enhancementElements.push(arrowHelper, clickPoint, label);
-		console.log('📊 Elementi totali nell\'array:', this.enhancementElements.length);
 	}
 
 	clearEnhancements(): void {
-		console.log('🔧 CLEARING ENHANCEMENTS - elementi da rimuovere:', this.enhancementElements.length);
 
 		for (const element of this.enhancementElements) {
-			console.log('🗑️ Rimuovendo elemento:', element);
 			this.scene.remove(element);
-			
-			// Pulisci le risorse per Mesh
+
 			if (element instanceof Mesh) {
 				if (element.geometry) element.geometry.dispose();
 				if (element.material) {
@@ -806,14 +781,12 @@ class ConnectorVisualizationManager {
 					}
 				}
 			}
-			
-			// Pulisci le risorse per ArrowHelper
+
 			if (element instanceof ArrowHelper) {
 				element.dispose();
 			}
 		}
 		this.enhancementElements = [];
-		console.log('✅ ENHANCEMENTS CLEARED');
 	}
 }
 
@@ -1100,17 +1073,18 @@ export class Renderer {
 		for (const element of this.#objects) {
 			element.dispose(this.#scene);
 		}
-
+	
 		for (const element of this.#helpers) {
 			element.dispose();
 			this.#scene.remove(element);
 		}
-
+	
 		this.handles.clear();
+		this.#helpers.splice(0, this.#helpers.length);
 		
 		const isVisible = this.virtualRoomManager.isVisible();
 		this.virtualRoomManager.createRoom(this.virtualRoomManager.getCurrentDimensions(), false, isVisible);
-
+	
 		return this;
 	}
 

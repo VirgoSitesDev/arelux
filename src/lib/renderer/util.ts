@@ -10,7 +10,7 @@ import {
 	type Renderer as ThreeRenderer,
 } from 'three';
 import type { Renderer } from './renderer';
-import { TemperatureManager } from '../config/temperatureConfig'; // NUOVO IMPORT
+import { TemperatureManager } from '../config/temperatureConfig';
 
 export async function loadModel(
 	state: Renderer,

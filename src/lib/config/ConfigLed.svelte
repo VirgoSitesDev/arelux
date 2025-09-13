@@ -11,7 +11,6 @@
 
 	type Props = {
 		family: Family;
-		/** If length is undefined, disables opening the popup */
 		length: number | undefined;
 		tenant: string;
 		supabase: SupabaseClient<Database>;

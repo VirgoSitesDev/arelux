@@ -1,5 +1,3 @@
-// tutta questa gestione dovrà essere migliorata e sistemata con l'aggiunta delle nuove famiglie
-
 export function getRequiredConnector4Family(
     obj1: { code: string; family: string, system: string },
     obj2: { code: string; family: string, system: string }

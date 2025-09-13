@@ -45,12 +45,6 @@ export class ExtrudedObject extends TemporaryObject {
 		this.setCatalogEntry(entry);
 	}
 
-	/**
-	 * Crea un nuovo RendererObject. Dovresti usare questo metodo statico, piuttosto del costruttore
-	 * @param state un riferimento allo stato del renderer
-	 * @param code Il codice dell'oggetto in catalogo
-	 * @returns Un istanza di RendererObject
-	 */
 	static init(state: Renderer, code: string, length: number): ExtrudedObject {
 		return new ExtrudedObject(state, code, defaultShape, length);
 	}
