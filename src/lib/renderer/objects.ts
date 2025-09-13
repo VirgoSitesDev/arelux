@@ -433,7 +433,8 @@ export class TemporaryObject {
 			this.#state.frameObject(other);
 		}
 		
-		return j1.group;
+		this.#state.clearConnectorEnhancements();
+    	return j1.group;
 	}
 
 	attachLine(other: TemporaryObject, pos: Vector3Like, force: boolean = false): string {

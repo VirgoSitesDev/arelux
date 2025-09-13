@@ -677,31 +677,55 @@ class ConnectorVisualizationManager {
 			   code.toLowerCase().includes('rotante');
 	}
 
-	// Evidenzia i punti di connessione per i connettori rotanti
 	enhanceRotatingConnectorHandles(selectedCode: string): void {
-		if (!this.isRotatingConnector(selectedCode)) return;
-
+		console.log('🎯 CREATING ENHANCEMENTS for:', selectedCode);
+		
+		if (!this.isRotatingConnector(selectedCode)) {
+			console.log('❌ Not a rotating connector, skipping');
+			return;
+		}
+	
 		this.clearEnhancements();
-
-		// Trova tutti i connettori rotanti nella scena
+	
+		// AGGIUNGI QUESTO LOG
+		console.log('🔍 Cercando connettori rotanti nella scena...');
+		const allObjects = this.renderer.getObjects();
+		console.log('📊 Oggetti totali nella scena:', allObjects.length);
+		
+		allObjects.forEach((obj, index) => {
+			const code = obj.getCatalogEntry().code;
+			const isRotating = this.isRotatingConnector(code);
+			console.log(`Oggetto ${index}: ${code} - È rotante: ${isRotating}`);
+		});
+	
 		const rotatingConnectors = this.renderer.getObjects().filter(obj => 
 			this.isRotatingConnector(obj.getCatalogEntry().code)
 		);
-
+		
+		console.log('🎮 Connettori rotanti trovati:', rotatingConnectors.length);
+	
 		for (const connector of rotatingConnectors) {
+			console.log('🔧 Processando connettore:', connector.getCatalogEntry().code);
 			this.enhanceConnectorJunctions(connector);
 		}
 	}
 
-	// Evidenzia le junction di un singolo connettore
 	private enhanceConnectorJunctions(connector: TemporaryObject): void {
-		if (!connector.mesh) return;
-
+		console.log('🔍 enhanceConnectorJunctions per connector:', connector.getCatalogEntry().code);
+		
+		if (!connector.mesh) {
+			console.log('❌ Connector mesh non disponibile');
+			return;
+		}
+	
 		const catalogEntry = connector.getCatalogEntry();
 		const junctions = connector.getJunctions();
-
+	
+		console.log('📍 Junction totali:', catalogEntry.juncts.length);
+		console.log('🔗 Junction occupate:', junctions.filter(j => j !== null).length);
+	
 		catalogEntry.juncts.forEach((junction, index) => {
-			// Solo per junction libere (non connesse)
+			console.log(`Junction ${index}: libera=${junctions[index] === null}`);
 			if (junctions[index] === null) {
 				this.createEnhancedVisualization(connector, junction, index);
 			}
@@ -713,7 +737,11 @@ class ConnectorVisualizationManager {
 		junction: any, 
 		junctionIndex: number
 	): void {
-		if (!connector.mesh) return;
+		console.log('🎨 createEnhancedVisualization chiamato per junction:', junctionIndex);
+		if (!connector.mesh) {
+			console.log('❌ Connector mesh non disponibile');
+			return;
+		}
 	
 		const worldPosition = connector.mesh.localToWorld(new Vector3().copy(junction));
 		const direction = this.renderer.angleHelper(junction.angle + 30);
@@ -755,11 +783,16 @@ class ConnectorVisualizationManager {
 		this.scene.add(clickPoint);
 		this.scene.add(label);
 	
+		console.log('➕ Aggiungendo elementi alla scena e all\'array');
 		this.enhancementElements.push(arrowHelper, clickPoint, label);
+		console.log('📊 Elementi totali nell\'array:', this.enhancementElements.length);
 	}
 
 	clearEnhancements(): void {
+		console.log('🔧 CLEARING ENHANCEMENTS - elementi da rimuovere:', this.enhancementElements.length);
+
 		for (const element of this.enhancementElements) {
+			console.log('🗑️ Rimuovendo elemento:', element);
 			this.scene.remove(element);
 			
 			// Pulisci le risorse per Mesh
@@ -780,6 +813,7 @@ class ConnectorVisualizationManager {
 			}
 		}
 		this.enhancementElements = [];
+		console.log('✅ ENHANCEMENTS CLEARED');
 	}
 }
 

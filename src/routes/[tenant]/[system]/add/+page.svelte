@@ -250,6 +250,8 @@
 				chosenItem: chosenItem,
 				reference,
 			});
+
+			renderer?.clearConnectorEnhancements();
 		});
 	}
 });
@@ -356,6 +358,8 @@ $effect(() => {
 								showPowerPanel = false;
 								renderer?.handles.setVisible(false);
 								renderer?.setOpacity(1);
+
+								renderer?.clearConnectorEnhancements();
 							}}>
 								<DropdownMenu.Item class="flex items-center w-full">
 									<span class="w-full text-left">
@@ -635,6 +639,8 @@ $effect(() => {
 						if (temporary) {
 							const oldTemporary = temporary;
 							temporary = null;
+
+							renderer?.clearConnectorEnhancements();
 							
 							const stateToPass = {
 								chosenFamily: page.state.chosenFamily!,
