@@ -4,6 +4,7 @@
 	import X from 'phosphor-svelte/lib/X';
 	import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft';
 	import ArrowRight from 'phosphor-svelte/lib/ArrowRight';
+	import Prohibit from 'phosphor-svelte/lib/Prohibit';
 	import LoaderCircle from 'lucide-svelte/icons/loader-circle';
 	import { page } from '$app/state';
 	import { get } from 'svelte/store';
@@ -237,17 +238,17 @@
 		for (const [code, quantity] of itemsMap) items.push({ code, quantity });
 
 		for (const system of systems) {
-			if (system.currentDriver) {
+			if (system.currentDriver && system.currentDriver !== 'none') {
 				let quantity = Math.ceil(system.totalPower / drivers.find((d) => d.code === system.currentDriver)!.power);
 				if (quantity > 0) {
 					quantity = Math.max(quantity, minDrivers);
 					items.push({ code: system.currentDriver, quantity });
 					
-					if (system.currentPowerSupply) {
+					if (system.currentPowerSupply && system.currentPowerSupply !== 'none') {
 						items.push({ code: system.currentPowerSupply, quantity });
 					}
 					
-					if (system.currentBox) {
+					if (system.currentBox && system.currentBox !== 'none') {
 						items.push({ code: system.currentBox, quantity });
 					}
 				}
@@ -342,14 +343,17 @@
 						</div>
 					</div>
 
-					<div class="grid gap-3" class:grid-cols-2={showIntrack && showRemote} class:grid-cols-1={!(showIntrack && showRemote)}>
+					<div class="grid gap-3" class:grid-cols-3={showIntrack && showRemote} class:grid-cols-2={!(showIntrack && showRemote)}>
 						{#if showIntrack && showRemote}
 							<span class="text-center">INTRACK</span>
 							<span class="text-center">REMOTE</span>
+							<span class="text-center">NESSUNO</span>
 						{:else if showIntrack}
 							<span class="text-center">INTRACK</span>
+							<span class="text-center">NESSUNO</span>
 						{:else if showRemote}
 							<span class="text-center">REMOTE</span>
+							<span class="text-center">NESSUNO</span>
 						{/if}
 						
 						{#if showIntrack}
@@ -453,6 +457,34 @@
 								</button>
 							</div>
 						{/if}
+
+						<!-- Opzione "Nessun Driver" -->
+						<div class="flex flex-col gap-3">
+							<button
+								class={cn(
+									'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
+									system.currentDriver === 'none' && 'border-primary',
+								)}
+								onclick={() => {
+									systems[systemIndex].currentDriver = 'none';
+									systems = [...systems];
+								}}
+							>
+								<div class="flex h-full flex-col justify-start">
+									<span class="mb-2 mt-3 text-lg font-medium">
+										Nessun Driver
+									</span>
+			
+									<span class="text-sm text-muted-foreground">
+										Nessun driver necessario
+									</span>
+								</div>
+			
+								<div class="relative ml-auto flex h-[125px] w-[125px] items-center justify-center rounded-full border-4 bg-gray-100">
+									<Prohibit size={48} class="text-gray-500" />
+								</div>
+							</button>
+						</div>
 					</div>
 				</div>
 			{/each}
@@ -473,10 +505,10 @@
 				disabled={systems.some(s => s.currentDriver === null)}
 				onclick={() => {
 					const currentSystem = page.data.system.toLowerCase().replace(' ', '_');
-					const allIntrack = systems.every(s => s.currentDriver && !s.currentDriver.startsWith('AT'));
-					const hasIntrack = systems.some(s => s.currentDriver && !s.currentDriver.startsWith('AT'));
+					const allIntrackOrNone = systems.every(s => s.currentDriver === 'none' || (s.currentDriver && !s.currentDriver.startsWith('AT')));
+					const hasIntrack = systems.some(s => s.currentDriver && !s.currentDriver.startsWith('AT') && s.currentDriver !== 'none');
 
-					if (allIntrack) {
+					if (allIntrackOrNone) {
 						pushState('', { currentPage: 4 } as App.PageState);
 					}
 					else if (hasIntrack) {
@@ -501,12 +533,12 @@
 				{$_("config.totalPower")}: {power}W.
 			</span>
 		
-			<!-- Mostra solo i sistemi che NON hanno driver INTRACK -->
+			<!-- Mostra solo i sistemi che NON hanno driver INTRACK e NON hanno scelto "none" -->
 			{#each systems.filter(system => system.currentDriver && system.currentDriver.startsWith('AT')) as system, systemIndex}
 			{@const originalSystemIndex = systems.indexOf(system)}
 				<div class="mb-6">
 					<h3 class="mb-3 text-xl font-medium">Sistema {originalSystemIndex + 1} - {system.currentDriver}</h3>
-					<div class="grid grid-cols-2 gap-3">
+					<div class="grid grid-cols-3 gap-3">
 						{#each powerSupplies as psu}
 							{@const url = page.data.supabase.storage
 								.from(page.data.tenant)
@@ -552,15 +584,38 @@
 								</div>
 							</button>
 						{/each}
+
+						<!-- Opzione "Nessuna testa" -->
+						<button
+							class={cn(
+								'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
+								system.currentPowerSupply === 'none' && 'border-primary',
+							)}
+							onclick={() => {
+								systems[systems.indexOf(system)].currentPowerSupply = 'none';
+							}}
+						>
+							<div class="flex h-full flex-col justify-start">
+								<span class="mb-2 mt-3 text-lg font-medium">
+									Nessuna testa
+								</span>
+								<span class="text-sm text-muted-foreground">
+									Nessuna testa necessaria
+								</span>
+							</div>
+							<div class="relative ml-auto flex h-[125px] w-[125px] items-center justify-center rounded-full border-4 bg-gray-100">
+								<Prohibit size={48} class="text-gray-500" />
+							</div>
+						</button>
 					</div>
 				</div>
 			{/each}
 		
 			<!-- Se non ci sono sistemi REMOTE, mostra messaggio -->
-			{#if systems.every(s => s.currentDriver && !s.currentDriver.startsWith('AT'))}
+			{#if systems.every(s => s.currentDriver === 'none' || (s.currentDriver && !s.currentDriver.startsWith('AT')))}
 				<div class="text-center py-6">
 					<p class="text-lg text-muted-foreground">
-						Tutti i sistemi utilizzano driver INTRACK - nessun alimentatore necessario
+						Tutti i sistemi utilizzano driver INTRACK o nessun driver - nessun alimentatore necessario
 					</p>
 				</div>
 			{/if}
@@ -577,7 +632,7 @@
 					disabled={systems.filter(s => s.currentDriver && s.currentDriver.startsWith('AT')).some(s => s.currentPowerSupply === null)}
 					onclick={() => {
 						// Se non ci sono sistemi REMOTE, vai direttamente all'email
-						if (systems.every(s => s.currentDriver && !s.currentDriver.startsWith('AT'))) {
+						if (systems.every(s => s.currentDriver === 'none' || (s.currentDriver && !s.currentDriver.startsWith('AT')))) {
 							pushState('', { currentPage: 4 } as App.PageState);
 						} else {
 							pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState);
@@ -591,7 +646,7 @@
 		{:else if page.state.currentPage === 3}
 			<span class="mb-6 text-5xl font-semibold">{$_("invoice.box")}</span>
 		
-			<!-- Mostra solo i sistemi che NON hanno driver INTRACK -->
+			<!-- Mostra solo i sistemi che NON hanno driver INTRACK e NON hanno scelto "none" -->
 			{#each systems.filter(system => system.currentDriver && system.currentDriver.startsWith('AT')) as system, systemIndex}
 				{@const originalSystemIndex = systems.indexOf(system)}
 				<div class="mb-6">
@@ -642,15 +697,38 @@
 								</div>
 							</button>
 						{/each}
+
+						<!-- Opzione "Nessuna scatola" -->
+						<button
+							class={cn(
+								'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
+								system.currentBox === 'none' && 'border-primary',
+							)}
+							onclick={() => {
+								systems[systems.indexOf(system)].currentBox = 'none';
+							}}
+						>
+							<div class="flex h-full flex-col justify-start">
+								<span class="mb-2 mt-3 text-lg font-medium">
+									Nessuna scatola
+								</span>
+								<span class="text-sm text-muted-foreground">
+									Nessuna scatola necessaria
+								</span>
+							</div>
+							<div class="relative ml-auto flex h-[125px] w-[125px] items-center justify-center rounded-full border-4 bg-gray-100">
+								<Prohibit size={48} class="text-gray-500" />
+							</div>
+						</button>
 					</div>
 				</div>
 			{/each}
 		
 			<!-- Se non ci sono sistemi REMOTE, mostra messaggio -->
-			{#if systems.every(s => s.currentDriver && !s.currentDriver.startsWith('AT'))}
+			{#if systems.every(s => s.currentDriver === 'none' || (s.currentDriver && !s.currentDriver.startsWith('AT')))}
 				<div class="text-center py-6">
 					<p class="text-lg text-muted-foreground">
-						Tutti i sistemi utilizzano driver INTRACK - nessuna scatola necessaria
+						Tutti i sistemi utilizzano driver INTRACK o nessun driver - nessuna scatola necessaria
 					</p>
 				</div>
 			{/if}
