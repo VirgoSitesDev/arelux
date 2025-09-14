@@ -6,6 +6,7 @@
     import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft';
     import ArrowRight from 'phosphor-svelte/lib/ArrowRight';
     import ArrowsOutCardinal from 'phosphor-svelte/lib/ArrowsOutCardinal';
+    import ArrowsClockwise from 'phosphor-svelte/lib/ArrowsClockwise';
     import House from 'phosphor-svelte/lib/House';
     import type { MouseEventHandler } from 'svelte/elements';
     import type { Renderer } from '$lib/renderer/renderer';
@@ -21,6 +22,7 @@
         selectedConfiguration = null as Set<TemporaryObject> | null,
         onToggle = () => {},
         onMove = () => {},
+        onRotate = () => {},
         onConfigurationSelected = (config: Set<TemporaryObject> | null) => {}
     } = $props();
 
@@ -28,7 +30,7 @@
 
     function hasVerticalProfiles(): boolean {
         if (!renderer || !selectedConfiguration) return false;
-
+        
         const profiles = Array.from(selectedConfiguration).filter(obj => 
             obj.getCatalogEntry().line_juncts && obj.getCatalogEntry().line_juncts.length > 0 ||
             obj.getCatalogEntry().juncts && obj.getCatalogEntry().juncts.length >= 2
@@ -74,13 +76,21 @@
         onMove();
     }
 
+    function handleRotate() {
+        if (!renderer || !selectedConfiguration) return;
+        
+        renderer.rotateConfiguration(selectedConfiguration, 90);
+        onMove();
+        onRotate();
+        
+        toast.success('Configurazione ruotata di 90°');
+    }
+
     function centerInRoom() {
         if (!renderer || !selectedConfiguration) return;
         
         renderer.centerConfigurationInRoom(selectedConfiguration);
-
         onMove();
-
         toast.success('Configurazione centrata nella stanza');
     }
 
@@ -100,9 +110,7 @@
                 </div>
             </div>
 
-            <!-- Controlli movimento per assi -->
             <div class="flex flex-col gap-3">
-                <!-- Asse X -->
                 <div class="flex items-center gap-3">
                     <span class="w-6 font-bold text-center text-lg">X</span>
                     <button 
@@ -121,7 +129,6 @@
                     </button>
                 </div>
 
-                <!-- Asse Y -->
                 <div class="flex items-center gap-3">
                     <span class="w-6 font-bold text-center text-lg">Y</span>
                     <button 
@@ -152,7 +159,6 @@
                     </button>
                 </div>
 
-                <!-- Asse Z -->
                 <div class="flex items-center gap-3">
                     <span class="w-6 font-bold text-center text-lg">Z</span>
                     <button 
@@ -172,7 +178,18 @@
                 </div>
             </div>
 
+            <hr class="border-gray-300">
+
             <div class="flex flex-col gap-2">
+                <button 
+                    onclick={handleRotate}
+                    class={cn(button({ color: 'secondary' }), 'w-full flex items-center justify-center gap-2')}
+                    title="Ruota l'intera configurazione di 90° in senso orario"
+                >
+                    <ArrowsClockwise size={16} />
+                    <span>Ruota Sistema 90°</span>
+                </button>
+
                 <button 
                     onclick={centerInRoom}
                     class={cn(button({ color: 'secondary' }), 'w-full flex items-center justify-center gap-2')}

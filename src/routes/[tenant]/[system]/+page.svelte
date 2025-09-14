@@ -127,6 +127,9 @@
 	function handleSystemMove() {
 	}
 
+	function handleSystemRotate() {
+	}
+
 	function handleLightMove(position: number) {
 		if (selectedLight && renderer) {
 			lightPosition = position;
@@ -455,6 +458,7 @@
 			{selectedConfiguration}
 			onToggle={toggleSystemMoverMode}
 			onMove={handleSystemMove}
+			onRotate={handleSystemRotate}
 			onConfigurationSelected={handleConfigurationSelected}
 		/>
 	</div>
