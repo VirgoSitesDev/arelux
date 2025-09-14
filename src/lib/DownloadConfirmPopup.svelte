@@ -33,26 +33,55 @@
 	let email: string = $state('');
 	let power = $state(getPowerBudget(page.data.catalog, get(objects)));
 	let sendingEmail = $state(false);
+	
 	const minDrivers = $derived(
 		power !== 0 ? Math.ceil(getTotalLength($objects, page.data.families) / 10000) : 0,
 	);
 
-	let systems = $derived(() => {
-		const systemsSet = new Set<string>();
-		for (const obj of get(objects)) {
-			if (page.data.catalog[obj.code]) {
-				systemsSet.add(page.data.catalog[obj.code].system);
+	// Logica per sistemi multipli
+	let systems: Array<{
+		id: string;
+		objects: SavedObject[];
+		totalPower: number;
+		currentDriver: string | null;
+		currentPowerSupply: string | null;
+		currentBox: string | null;
+	}> = $state([]);
+
+	function findConnectedObjects(startObject: any, allObjects: SavedObject[]): Set<string> {
+		const visited = new Set<string>();
+		const toVisit = [startObject];
+		
+		while (toVisit.length > 0) {
+			const current = toVisit.pop()!;
+			if (visited.has(current.id)) continue;
+			
+			visited.add(current.id);
+			
+			for (const junction of current.getJunctions()) {
+				if (junction && !visited.has(junction.id)) {
+					toVisit.push(junction);
+				}
+			}
+			
+			for (const lineJunction of current.getLineJunctions()) {
+				if (lineJunction && !visited.has(lineJunction.id)) {
+					toVisit.push(lineJunction);
+				}
+			}
+			
+			for (const obj of allObjects) {
+				if (!obj.object || visited.has(obj.object.id)) continue;
+				
+				if (obj.object.getJunctions().includes(current) || 
+					obj.object.getLineJunctions().includes(current)) {
+					toVisit.push(obj.object);
+				}
 			}
 		}
-		return Array.from(systemsSet).map(systemCode => ({
-			id: systemCode,
-			name: systemCode
-		}));
-	});
-
-	let systemDriverSelections = $state<Record<string, string>>({});
-	let systemPowerSupplySelections = $state<Record<string, string>>({});
-	let systemBoxSelections = $state<Record<string, string>>({});
+		
+		return visited;
+	}
 
 	const leds = $state([
 		{
@@ -81,6 +110,7 @@
 			amount: 0,
 		},
 	]);
+
 	const drivers = [
 		{ code: 'XNRS01DV', power: 150 },
 		{ code: 'XNRS02DV', power: 250 },
@@ -92,17 +122,51 @@
 	const powerSupplies = ['XNRS01PCO.5', 'XNRS01PC2.5'];
 	const boxes = ['SMCKS01SDB', 'SMCKS02SDB', 'SMCKS02TDB', 'SMCKS03TDB'];
 
-	function getAvailableDriversForSystem(systemId: string) {
-		const systemLower = systemId.toLowerCase();
+	const availableDrivers = $derived.by(() => {
+		const currentSystem = page.data.system.toLowerCase().replace(' ', '_');
 		
-		if (systemLower === 'xfree s' || systemLower === 'xfree_s') {
-			return drivers.filter(driver => driver.code.startsWith('AT'));
-		} else if (systemLower === 'xnet') {
+		if (currentSystem === 'xfree_s' || currentSystem === 'xfrees') {
+			return drivers.filter((driver) => driver.code.startsWith('AT'));
+		} else if (currentSystem === 'xnet') {
 			return drivers;
 		}
 		
 		return drivers;
-	}
+	});
+
+	const intrackDrivers = $derived(availableDrivers.filter((driver) => !driver.code.startsWith('AT')));
+	const remoteDrivers = $derived(availableDrivers.filter((driver) => driver.code.startsWith('AT')));
+
+	const showIntrack = $derived(intrackDrivers.length > 0);
+	const showRemote = $derived(remoteDrivers.length > 0);
+
+	$effect(() => {
+		const allObjects = get(objects);
+		const visitedObjects = new Set<string>();
+		const systemGroups: typeof systems = [];
+		
+		for (const obj of allObjects) {
+			if (!obj.object || visitedObjects.has(obj.object.id)) continue;
+			
+			const connectedObjects = findConnectedObjects(obj.object, allObjects);
+			const systemObjects = allObjects.filter(o => 
+				o.object && connectedObjects.has(o.object.id)
+			);
+			
+			systemObjects.forEach(o => visitedObjects.add(o.object!.id));
+			
+			systemGroups.push({
+				id: `Sistema ${systemGroups.length + 1}`,
+				objects: systemObjects,
+				totalPower: getPowerBudget(page.data.catalog, systemObjects),
+				currentDriver: null,
+				currentPowerSupply: null,
+				currentBox: null
+			});
+		}
+		
+		systems = systemGroups;
+	});
 
 	$effect(() => {
 		let arr: SavedObject[] = $objects;
@@ -116,6 +180,30 @@
 				}),
 			);
 		power = -getPowerBudget(page.data.catalog, arr);
+	});
+
+	$effect(() => {
+		const currentSystem = page.data.system.toLowerCase().replace(' ', '_');
+		
+		if (currentSystem === 'xfree_s' || currentSystem === 'xfrees') {
+			if (remoteDrivers.length > 0) {
+				systems.forEach(system => {
+					if (!system.currentDriver) {
+						system.currentDriver = remoteDrivers[0].code;
+					}
+				});
+			}
+		} else if (currentSystem === 'xnet') {
+			systems.forEach(system => {
+				if (!system.currentDriver && availableDrivers.length > 0) {
+					if (intrackDrivers.length > 0) {
+						system.currentDriver = intrackDrivers[0].code;
+					} else if (remoteDrivers.length > 0) {
+						system.currentDriver = remoteDrivers[0].code;
+					}
+				}
+			});
+		}
 	});
 
 	function blobToBase64(blob: Blob): Promise<string> {
@@ -148,21 +236,19 @@
 		const items: { code: string; quantity: number; length?: number }[] = [];
 		for (const [code, quantity] of itemsMap) items.push({ code, quantity });
 
-		for (const system of systemsData) {
-			const driver = systemDriverSelections[system.id];
-			const powerSupply = systemPowerSupplySelections[system.id];
-			const box = systemBoxSelections[system.id];
-
-			if (driver) {
-				const driverInfo = drivers.find(d => d.code === driver);
-				if (driverInfo) {
-					let quantity = Math.ceil(power / driverInfo.power);
-					if (quantity > 0) {
-						quantity = Math.max(quantity, minDrivers);
-						items.push({ code: driver, quantity });
-						
-						if (powerSupply) items.push({ code: powerSupply, quantity });
-						if (box) items.push({ code: box, quantity });
+		for (const system of systems) {
+			if (system.currentDriver) {
+				let quantity = Math.ceil(system.totalPower / drivers.find((d) => d.code === system.currentDriver)!.power);
+				if (quantity > 0) {
+					quantity = Math.max(quantity, minDrivers);
+					items.push({ code: system.currentDriver, quantity });
+					
+					if (system.currentPowerSupply) {
+						items.push({ code: system.currentPowerSupply, quantity });
+					}
+					
+					if (system.currentBox) {
+						items.push({ code: system.currentBox, quantity });
 					}
 				}
 			}
@@ -243,130 +329,134 @@
 	{:else if page.state.currentPage === 1 || (!askForLeds && page.state.currentPage === undefined)}
 		<span class="text-5xl font-semibold">{$_("config.selectDrivers")}</span>
 
-		<span class="py-6 text-2xl font-light">
-			{$_("config.totalPower")}: {power}W.
-		</span>
+		<div class="max-h-[70vh] overflow-y-auto">
+			{#each systems as system, systemIndex}
+				<div class="mb-8 border-b-2 border-gray-200 pb-6">
+					<div class="mb-4">
+						<h3 class="text-2xl font-semibold">{system.id}</h3>
+						<span class="text-lg text-gray-600">
+							{$_("config.totalPower")}: {system.totalPower}W
+						</span>
+						<div class="text-sm text-gray-500 mt-1">
+							{system.objects.length} oggetti connessi
+						</div>
+					</div>
 
-		{#each systems as system}
-			<div class="mb-8 w-full">
-				<h3 class="mb-4 text-3xl font-medium">Sistema: {system.name}</h3>
-				
-				{@const availableDrivers = getAvailableDriversForSystem(system.id)}
-				{@const intrackDrivers = availableDrivers.filter(driver => !driver.code.startsWith('AT'))}
-				{@const remoteDrivers = availableDrivers.filter(driver => driver.code.startsWith('AT'))}
-				{@const showIntrack = intrackDrivers.length > 0}
-				{@const showRemote = remoteDrivers.length > 0}
-
-				<div class="grid gap-3" class:grid-cols-2={showIntrack && showRemote} class:grid-cols-1={!(showIntrack && showRemote)}>
-					{#if showIntrack && showRemote}
-						<span class="text-center">INTRACK</span>
-						<span class="text-center">REMOTE</span>
-					{:else if showIntrack}
-						<span class="text-center">INTRACK</span>
-					{:else if showRemote}
-						<span class="text-center">REMOTE</span>
-					{/if}
-					
-					{#if showIntrack && intrackDrivers[0]}
-						{@const intrackDriver = intrackDrivers[0]}
-						{@const intrackUrl = page.data.supabase.storage
-							.from(page.data.tenant)
-							.getPublicUrl(`images/${intrackDriver.code}.webp`).data.publicUrl}
+					<div class="grid gap-3" class:grid-cols-2={showIntrack && showRemote} class:grid-cols-1={!(showIntrack && showRemote)}>
+						{#if showIntrack && showRemote}
+							<span class="text-center">INTRACK</span>
+							<span class="text-center">REMOTE</span>
+						{:else if showIntrack}
+							<span class="text-center">INTRACK</span>
+						{:else if showRemote}
+							<span class="text-center">REMOTE</span>
+						{/if}
 						
-						<div class="flex flex-col gap-3">
-							<button
-								class={cn(
-									'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
-									systemDriverSelections[system.id] === intrackDriver.code && 'border-primary',
-								)}
-								onclick={() => systemDriverSelections[system.id] = intrackDriver.code}
-							>
-								<div class="flex h-full flex-col justify-start">
-									<span class="mb-2 mt-3 text-lg font-medium">
-										{intrackDriver.code}
-										({intrackDriver.power}W)
-									</span>
-			
-									<span class="text-sm text-muted-foreground">
-										{$_("config.quantity")}: {Math.max(Math.ceil(power / intrackDriver.power), minDrivers)}
-									</span>
-								</div>
-			
-								<div class="relative ml-auto">
-									<img
-										src={intrackUrl}
-										width="125"
-										height="125"
-										alt=""
-										onload={() => loaded.add(intrackUrl)}
-										class={cn(
-											'h-[125px] rounded-full border-4 transition-all',
-											loaded.has(intrackUrl) || 'opacity-0',
-										)}
-									/>
-			
-									<div
-										class={cn(
-											'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
-											loaded.has(intrackUrl) && 'hidden',
-										)}
-									></div>
-								</div>
-							</button>
-						</div>
-					{/if}
-					
-					{#if showRemote && remoteDrivers[0]}
-						{@const remoteDriver = remoteDrivers[0]}
-						{@const remoteUrl = page.data.supabase.storage
-							.from(page.data.tenant)
-							.getPublicUrl(`images/${remoteDriver.code}.webp`).data.publicUrl}
-							
-						<div class="flex flex-col gap-3">
-							<button
-								class={cn(
-									'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
-									systemDriverSelections[system.id] === remoteDriver.code && 'border-primary',
-								)}
-								onclick={() => systemDriverSelections[system.id] = remoteDriver.code}
-							>
-								<div class="flex h-full flex-col justify-start">
-									<span class="mb-2 mt-3 text-lg font-medium">
-										{remoteDriver.code}
-										({remoteDriver.power}W)
-									</span>
-			
-									<span class="text-sm text-muted-foreground">
-										{$_("config.quantity")}: {Math.max(Math.ceil(power / remoteDriver.power), minDrivers)}
-									</span>
-								</div>
-			
-								<div class="relative ml-auto">
-									<img
-										src={remoteUrl}
-										width="125"
-										height="125"
-										alt=""
-										onload={() => loaded.add(remoteUrl)}
-										class={cn(
-											'h-[125px] rounded-full border-4 transition-all',
-											loaded.has(remoteUrl) || 'opacity-0',
-										)}
-									/>
-			
-									<div
-										class={cn(
-											'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
-											loaded.has(remoteUrl) && 'hidden',
-										)}
-									></div>
-								</div>
-							</button>
-						</div>
-					{/if}
+						{#if showIntrack}
+							{@const driver = intrackDrivers[0]}
+							{@const url = page.data.supabase.storage
+								.from(page.data.tenant)
+								.getPublicUrl(`images/${driver.code}.webp`).data.publicUrl}
+							<div class="flex flex-col gap-3">
+								<button
+									class={cn(
+										'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
+										system.currentDriver === driver.code && 'border-primary',
+									)}
+									onclick={() => {
+										systems[systemIndex].currentDriver = driver.code;
+										systems = [...systems];
+									}}
+								>
+									<div class="flex h-full flex-col justify-start">
+										<span class="mb-2 mt-3 text-lg font-medium">
+											{driver.code}
+											({driver.power}W)
+										</span>
+				
+										<span class="text-sm text-muted-foreground">
+											{$_("config.quantity")}: {Math.max(Math.ceil(system.totalPower / driver.power), minDrivers)}
+										</span>
+									</div>
+				
+									<div class="relative ml-auto">
+										<img
+											src={url}
+											width="125"
+											height="125"
+											alt=""
+											onload={() => loaded.add(url)}
+											class={cn(
+												'h-[125px] rounded-full border-4 transition-all',
+												loaded.has(url) || 'opacity-0',
+											)}
+										/>
+				
+										<div
+											class={cn(
+												'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
+												loaded.has(url) && 'hidden',
+											)}
+										></div>
+									</div>
+								</button>
+							</div>
+						{/if}
+						
+						{#if showRemote}
+							{@const driver = remoteDrivers[0]}
+							{@const url = page.data.supabase.storage
+								.from(page.data.tenant)
+								.getPublicUrl(`images/${driver.code}.webp`).data.publicUrl}
+							<div class="flex flex-col gap-3">
+								<button
+									class={cn(
+										'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
+										system.currentDriver === driver.code && 'border-primary',
+									)}
+									onclick={() => {
+										systems[systemIndex].currentDriver = driver.code;
+										systems = [...systems];
+									}}
+								>
+									<div class="flex h-full flex-col justify-start">
+										<span class="mb-2 mt-3 text-lg font-medium">
+											{driver.code}
+											({driver.power}W)
+										</span>
+				
+										<span class="text-sm text-muted-foreground">
+											{$_("config.quantity")}: {Math.max(Math.ceil(system.totalPower / driver.power), minDrivers)}
+										</span>
+									</div>
+				
+									<div class="relative ml-auto">
+										<img
+											src={url}
+											width="125"
+											height="125"
+											alt=""
+											onload={() => loaded.add(url)}
+											class={cn(
+												'h-[125px] rounded-full border-4 transition-all',
+												loaded.has(url) || 'opacity-0',
+											)}
+										/>
+				
+										<div
+											class={cn(
+												'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
+												loaded.has(url) && 'hidden',
+											)}
+										></div>
+									</div>
+								</button>
+							</div>
+						{/if}
+					</div>
 				</div>
-			</div>
-		{/each}
+			{/each}
+		</div>
 
 		<div class="mt-6 flex gap-5">
 			{#if askForLeds}
@@ -379,14 +469,10 @@
 			{/if}
 			<Button.Root
 				class={button({ class: 'flex' })}
-				disabled={systems.some(system => !systemDriverSelections[system.id])}
+				disabled={systems.some(s => s.currentDriver === null)}
 				onclick={() => {
-					const allSystemsIntrack = systems.every(system => {
-						const driver = systemDriverSelections[system.id];
-						return driver && !driver.startsWith('AT');
-					});
-					
-					if (allSystemsIntrack) {
+					const currentSystem = page.data.system.toLowerCase().replace(' ', '_');
+					if (currentSystem === 'xfree_s' || currentSystem === 'xfrees') {
 						pushState('', { currentPage: 4 } as App.PageState);
 					} else {
 						pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState);
@@ -398,67 +484,71 @@
 		</div>
 	{:else if page.state.currentPage === 2}
 		<span class="text-5xl font-semibold">{$_("invoice.heads")}</span>
-		<span class="py-6 text-2xl font-light">
-			{$_("config.totalPower")}: {power}W.
-		</span>
 		
-		{#each systems.filter(system => {
-			const driver = systemDriverSelections[system.id];
-			return driver && driver.startsWith('AT');
-		}) as system}
-			<div class="mb-8 w-full">
-				<h3 class="mb-4 text-3xl font-medium">Sistema: {system.name}</h3>
-				
-				<div class="grid grid-cols-2 gap-3">
-					{#each powerSupplies as psu}
-						{@const url = page.data.supabase.storage
-							.from(page.data.tenant)
-							.getPublicUrl(`images/${psu}.webp`).data.publicUrl}
-						<button
-							class={cn(
-								'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
-								systemPowerSupplySelections[system.id] === psu && 'border-primary',
-							)}
-							onclick={() => systemPowerSupplySelections[system.id] = psu}
-						>
-							<div class="flex h-full flex-col justify-start">
-								<span class="mb-2 mt-3 text-lg font-medium">
-									{psu}
-								</span>
+		<div class="max-h-[70vh] overflow-y-auto">
+			{#each systems as system, systemIndex}
+				<div class="mb-8 border-b-2 border-gray-200 pb-6">
+					<div class="mb-4">
+						<h3 class="text-2xl font-semibold">{system.id}</h3>
+						<span class="text-lg text-gray-600">
+							{$_("config.totalPower")}: {system.totalPower}W
+						</span>
+					</div>
 
-								<span class="text-sm text-muted-foreground">
-									{$_("config.quantity")}: {Math.max(
-										Math.ceil(power / drivers.find((d) => d.code === systemDriverSelections[system.id])!.power),
-										minDrivers,
-									)}
-								</span>
-							</div>
+					<div class="grid grid-cols-2 gap-3">
+						{#each powerSupplies as psu}
+							{@const url = page.data.supabase.storage
+								.from(page.data.tenant)
+								.getPublicUrl(`images/${psu}.webp`).data.publicUrl}
+							<button
+								class={cn(
+									'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
+									system.currentPowerSupply === psu && 'border-primary',
+								)}
+								onclick={() => {
+									systems[systemIndex].currentPowerSupply = psu;
+									systems = [...systems];
+								}}
+							>
+								<div class="flex h-full flex-col justify-start">
+									<span class="mb-2 mt-3 text-lg font-medium">
+										{psu}
+									</span>
 
-							<div class="relative ml-auto">
-								<img
-									src={url}
-									width="125"
-									height="125"
-									alt=""
-									onload={() => loaded.add(url)}
-									class={cn(
-										'h-[125px] rounded-full border-4 transition-all',
-										loaded.has(url) || 'opacity-0',
-									)}
-								/>
+									<span class="text-sm text-muted-foreground">
+										{$_("config.quantity")}: {Math.max(
+											Math.ceil(system.totalPower / drivers.find((d) => d.code === system.currentDriver)!.power),
+											minDrivers,
+										)}
+									</span>
+								</div>
 
-								<div
-									class={cn(
-										'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
-										loaded.has(url) && 'hidden',
-									)}
-								></div>
-							</div>
-						</button>
-					{/each}
+								<div class="relative ml-auto">
+									<img
+										src={url}
+										width="125"
+										height="125"
+										alt=""
+										onload={() => loaded.add(url)}
+										class={cn(
+											'h-[125px] rounded-full border-4 transition-all',
+											loaded.has(url) || 'opacity-0',
+										)}
+									/>
+
+									<div
+										class={cn(
+											'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
+											loaded.has(url) && 'hidden',
+										)}
+									></div>
+								</div>
+							</button>
+						{/each}
+					</div>
 				</div>
-			</div>
-		{/each}
+			{/each}
+		</div>
 
 		<div class="mt-6 flex gap-5">
 			<Button.Root
@@ -469,13 +559,7 @@
 			</Button.Root>
 			<Button.Root
 				class={button({ class: 'flex' })}
-				disabled={systems
-					.filter(system => {
-						const driver = systemDriverSelections[system.id];
-						return driver && driver.startsWith('AT');
-					})
-					.some(system => !systemPowerSupplySelections[system.id])
-				}
+				disabled={systems.some(s => s.currentPowerSupply === null)}
 				onclick={() =>
 					pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState)}
 			>
@@ -485,63 +569,88 @@
 	{:else if page.state.currentPage === 3}
 		<span class="mb-6 text-5xl font-semibold">{$_("invoice.box")}</span>
 
-		{#each systems.filter(system => {
-			const driver = systemDriverSelections[system.id];
-			return driver && driver.startsWith('AT');
-		}) as system}
-			<div class="mb-8 w-full">
-				<h3 class="mb-4 text-3xl font-medium">Sistema: {system.name}</h3>
-				
-				<div class="flex flex-col gap-3">
-					{#each boxes as box}
-						{@const url = page.data.supabase.storage
-							.from(page.data.tenant)
-							.getPublicUrl(`images/${box}.webp`).data.publicUrl}
-						<button
-							class={cn(
-								'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
-								systemBoxSelections[system.id] === box && 'border-primary',
-							)}
-							onclick={() => systemBoxSelections[system.id] = box}
-						>
-							<div class="flex h-full flex-col justify-start">
-								<span class="mb-2 mt-3 text-lg font-medium">
-									{box}
-								</span>
-
-								<span class="text-sm text-muted-foreground">
-									{$_("config.quantity")}: {Math.max(
-										Math.ceil(power / drivers.find((d) => d.code === systemDriverSelections[system.id])!.power),
-										minDrivers,
-									)}
-								</span>
+		<div class="max-h-[70vh] overflow-y-auto">
+			{#each systems as system, systemIndex}
+				{@const hasRemoteDriver = system.currentDriver && system.currentDriver.startsWith('AT')}
+				{#if hasRemoteDriver}
+					<div class="mb-8 border-b-2 border-gray-200 pb-6">
+						<div class="mb-4">
+							<h3 class="text-2xl font-semibold">{system.id}</h3>
+							<span class="text-lg text-gray-600">
+								{$_("config.totalPower")}: {system.totalPower}W
+							</span>
+							<div class="text-sm text-gray-500 mt-1">
+								Driver REMOTE - richiede box di contenimento
 							</div>
+						</div>
 
-							<div class="relative ml-auto">
-								<img
-									src={url}
-									width="125"
-									height="125"
-									alt=""
-									onload={() => loaded.add(url)}
+						<div class="flex flex-col gap-3">
+							{#each boxes as box}
+								{@const url = page.data.supabase.storage
+									.from(page.data.tenant)
+									.getPublicUrl(`images/${box}.webp`).data.publicUrl}
+								<button
 									class={cn(
-										'h-[125px] rounded-full border-4 transition-all',
-										loaded.has(url) || 'opacity-0',
+										'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
+										system.currentBox === box && 'border-primary',
 									)}
-								/>
+									onclick={() => {
+										systems[systemIndex].currentBox = box;
+										systems = [...systems];
+									}}
+								>
+									<div class="flex h-full flex-col justify-start">
+										<span class="mb-2 mt-3 text-lg font-medium">
+											{box}
+										</span>
 
-								<div
-									class={cn(
-										'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
-										loaded.has(url) && 'hidden',
-									)}
-								></div>
+										<span class="text-sm text-muted-foreground">
+											{$_("config.quantity")}: {Math.max(
+												Math.ceil(system.totalPower / drivers.find((d) => d.code === system.currentDriver)!.power),
+												minDrivers,
+											)}
+										</span>
+									</div>
+
+									<div class="relative ml-auto">
+										<img
+											src={url}
+											width="125"
+											height="125"
+											alt=""
+											onload={() => loaded.add(url)}
+											class={cn(
+												'h-[125px] rounded-full border-4 transition-all',
+												loaded.has(url) || 'opacity-0',
+											)}
+										/>
+
+										<div
+											class={cn(
+												'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
+												loaded.has(url) && 'hidden',
+											)}
+										></div>
+									</div>
+								</button>
+							{/each}
+						</div>
+					</div>
+				{:else}
+					<div class="mb-8 border-b-2 border-gray-200 pb-6">
+						<div class="mb-4">
+							<h3 class="text-2xl font-semibold">{system.id}</h3>
+							<span class="text-lg text-gray-600">
+								{$_("config.totalPower")}: {system.totalPower}W
+							</span>
+							<div class="text-sm text-green-600 mt-1">
+								✓ Driver INTRACK - nessun box necessario
 							</div>
-						</button>
-					{/each}
-				</div>
-			</div>
-		{/each}
+						</div>
+					</div>
+				{/if}
+			{/each}
+		</div>
 
 		<div class="mt-6 flex gap-5">
 			<Button.Root
@@ -552,13 +661,7 @@
 			</Button.Root>
 			<Button.Root
 				class={button({ class: 'flex' })}
-				disabled={systems
-					.filter(system => {
-						const driver = systemDriverSelections[system.id];
-						return driver && driver.startsWith('AT');
-					})
-					.some(system => !systemBoxSelections[system.id])
-				}
+				disabled={systems.filter(s => s.currentDriver?.startsWith('AT')).some(s => s.currentBox === null)}
 				onclick={() =>
 					pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState)}
 			>
