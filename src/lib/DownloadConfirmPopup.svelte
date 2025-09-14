@@ -167,6 +167,7 @@
 			if (currentBox) items.push({ code: currentBox, quantity });
 		}
 		
+		console.log('fiewifhwiehf');
 		const blob: string = await html2pdf()
 			.set({ margin: 6, html2canvas: { letterRendering: true, removeContainer: true } })
 			.from(await invoiceTemplate(page.data.supabase, page.data.tenant, email, items))
