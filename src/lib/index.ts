@@ -15,9 +15,6 @@ import type { Vector3Like } from 'three';
 import type { RendererObject } from './renderer/objects';
 import _ from 'lodash';
 import { getRequiredConnector4Family } from './connectorRules';
-import { getPdfTranslations } from './pdfTranslations';
-import { locale } from 'svelte-i18n';
-import { translateDatabaseText } from './i18n/dbTranslator';
 
 export let objects: Writable<SavedObject[]> = writable([]);
 
@@ -296,6 +293,8 @@ export async function invoiceTemplate(
 	to: string,
 	items: { code: string; quantity: number }[],
 ): Promise<string> {
+	// PREZZI COMMENTATI - Inizio sezione prezzi
+	/*
 	const prices: Record<string, number> = {};
 	const prices_query = await supabase
 		.from('objects')
@@ -307,11 +306,11 @@ export async function invoiceTemplate(
 		throw prices_query.error;
 	}
 	for (const obj of prices_query.data) prices[obj.code] = obj.price_cents;
+	*/
+	// PREZZI COMMENTATI - Fine sezione prezzi
 
-	// Carica le immagini e convertile in base64
 	const itemsWithImages = await Promise.all(items.map(async (item) => {
 		try {
-			// Usa il codice base per le risorse come negli altri punti del codice
 			const baseCode = item.code.includes('UWW') ? item.code.replace(/UWW(R?)/g, 'WW$1') :
 							 item.code.includes('NW') ? item.code.replace(/NW(R?)/g, 'WW$1') : item.code;
 			
@@ -332,32 +331,44 @@ export async function invoiceTemplate(
 				reader.readAsDataURL(blob);
 			});
 			
+			// PREZZI COMMENTATI - Calcoli prezzi commentati
+			/*
 			const basePrice = prices[item.code] / 100;
 			const finalPrice = basePrice * 0.75; // Sconto 25% come nel template originale
+			*/
 			
 			return {
 				...item,
+				// PREZZI COMMENTATI - Proprietà prezzi commentate
+				/*
 				price: basePrice,
 				finalPrice,
 				totalPrice: finalPrice * item.quantity,
-				imageUrl: imageBase64 // Usa base64 invece dell'URL
+				*/
+				imageUrl: imageBase64
 			};
 		} catch (error) {
 			console.error(`Errore caricamento immagine per ${item.code}:`, error);
+			
+			// PREZZI COMMENTATI - Calcoli prezzi di fallback commentati
+			/*
 			const basePrice = prices[item.code] / 100;
 			const finalPrice = basePrice * 0.75;
+			*/
 			
 			return {
 				...item,
+				// PREZZI COMMENTATI - Proprietà prezzi di fallback commentate
+				/*
 				price: basePrice,
 				finalPrice,
 				totalPrice: finalPrice * item.quantity,
-				imageUrl: null // Nessuna immagine disponibile
+				*/
+				imageUrl: null
 			};
 		}
 	}));
 
-	// Carica anche il logo aziendale
 	let logoBase64 = '';
 	try {
 		const logoUrl = supabase.storage.from(tenant).getPublicUrl(`${tenant}.png`).data.publicUrl;
@@ -375,11 +386,16 @@ export async function invoiceTemplate(
 		console.error('Errore caricamento logo:', error);
 	}
 
+	// PREZZI COMMENTATI - Calcoli totali commentati
+	/*
 	const subtotale = itemsWithImages.reduce((a, v) => a + v.totalPrice, 0);
 	const iva = 22; // Percentuale IVA
 	const ivaAmount = subtotale * (iva / 100);
 	const totale = subtotale + ivaAmount;
+	*/
 
+	// PREZZI COMMENTATI - Helper prezzi commentati
+	/*
 	Handlebars.registerHelper('euros', (amount: number) =>
 		Number.parseFloat(amount.toString()).toFixed(2).replace('.', ',')
 	);
@@ -391,12 +407,12 @@ export async function invoiceTemplate(
 	Handlebars.registerHelper('divide', (a: number, b: number) => {
 		return b !== 0 ? a / b : 0;
 	});
+	*/
 
 	Handlebars.registerHelper('add', (a: number, b: number) => {
 		return a + b;
 	});
 
-	// Helper per le traduzioni (se non hai il sistema di traduzione, usa testi fissi)
 	Handlebars.registerHelper('t', function(key: string) {
 		const translations: Record<string, string> = {
 			'pdfTitle': 'Preventivo Arelux',
@@ -407,24 +423,26 @@ export async function invoiceTemplate(
 			'professionalLighting': 'Illuminazione Professionale',
 			'image': 'Immagine',
 			'product': 'Prodotto',
+			// PREZZI COMMENTATI - Traduzioni prezzi commentate
+			/*
 			'price': 'Prezzo',
-			'units': 'Unità',
 			'totalPrice': 'Totale',
 			'currency': '€',
-			'professionalComponent': 'Componente professionale',
-			'highEfficiency': 'Alta efficienza',
-			'premiumQuality': 'Qualità premium',
 			'transportWithoutVAT': 'Trasporto senza IVA',
 			'subtotalWithoutVAT': 'Subtotale senza IVA',
 			'vat': 'IVA',
 			'totalWithVAT': 'TOTALE con IVA',
+			*/
+			'units': 'Unità',
+			'professionalComponent': 'Componente professionale',
+			'highEfficiency': 'Alta efficienza',
+			'premiumQuality': 'Qualità premium',
 			'offerValidity': 'Offerta valida 30 giorni',
 			'copyright': '© 2024 Arelux - Tutti i diritti riservati'
 		};
 		return translations[key] || key;
 	});
 
-	// Il tuo template originale ma con logoUrl sostituito da logoBase64
 	const htmlTemplate = `<!DOCTYPE html>
 <html lang="it">
 <head>
@@ -541,7 +559,7 @@ export async function invoiceTemplate(
 		}
 		.product-info { 
 			text-align: left; 
-			width: 350px; 
+			width: 450px; 
 			padding-left: 8px; 
 		}
 		.product-code { 
@@ -557,6 +575,7 @@ export async function invoiceTemplate(
 			line-height: 1.3; 
 			text-align: left;
 		}
+		/* PREZZI COMMENTATI - Stili prezzi commentati
 		.price { 
 			font-weight: bold; 
 			white-space: nowrap; 
@@ -566,11 +585,13 @@ export async function invoiceTemplate(
 			font-weight: bold; 
 			color: #000;
 		}
+		*/
 		.item-number { 
 			font-weight: bold; 
 			color: #333;
 			font-size: 10px;
 		}
+		/* PREZZI COMMENTATI - Stili sezione totali commentati
 		.totals-section { 
 			margin-top: 20px; 
 			display: flex; 
@@ -600,6 +621,7 @@ export async function invoiceTemplate(
 			color: #000;
 			border-bottom: 3px double #000 !important; 
 		}
+		*/
 		.footer { 
 			margin-top: 30px; 
 			padding-top: 15px; 
@@ -663,10 +685,14 @@ export async function invoiceTemplate(
 				<tr>
 					<th style="width: 40px;">#</th>
 					<th style="width: 80px;">{{t 'image'}}</th>
-					<th style="width: 350px;">{{t 'product'}}</th>
+					<th style="width: 450px;">{{t 'product'}}</th>
+					<!-- PREZZI COMMENTATI - Colonne prezzi commentate
 					<th style="width: 80px;">{{t 'price'}}</th>
+					-->
 					<th style="width: 60px;">{{t 'units'}}</th>
+					<!-- PREZZI COMMENTATI - Colonna totale commentata
 					<th style="width: 100px;">{{t 'totalPrice'}}</th>
+					-->
 				</tr>
 			</thead>
 			<tbody>
@@ -688,33 +714,18 @@ export async function invoiceTemplate(
 							{{t 'premiumQuality'}}
 						</div>
 					</td>
+					<!-- PREZZI COMMENTATI - Cella prezzo commentata
 					<td class="price">{{t 'currency'}}{{euros finalPrice}}</td>
+					-->
 					<td>{{quantity}}</td>
+					<!-- PREZZI COMMENTATI - Cella totale commentata
 					<td class="price total-price">{{t 'currency'}}{{euros totalPrice}}</td>
+					-->
 				</tr>
 				{{/each}}
 			</tbody>
 		</table>
-		<div class="totals-section">
-			<table class="totals-table">
-				<tr>
-					<td class="label">{{t 'transportWithoutVAT'}}:</td>
-					<td class="value">{{t 'currency'}}0,00</td>
-				</tr>
-				<tr>
-					<td class="label">{{t 'subtotalWithoutVAT'}}:</td>
-					<td class="value">{{t 'currency'}}{{euros subtotale}}</td>
-				</tr>
-				<tr>
-					<td class="label">{{t 'vat'}} ({{iva}}%):</td>
-					<td class="value">{{t 'currency'}}{{euros (multiply subtotale (divide iva 100))}}</td>
-				</tr>
-				<tr>
-					<td class="label total-final">{{t 'totalWithVAT'}}:</td>
-					<td class="value total-final">{{t 'currency'}}{{euros totale}}</td>
-				</tr>
-			</table>
-		</div>
+		<!-- PREZZI COMMENTATI - Sezione totali completamente rimossa per evitare errori Handlebars -->
 		<div class="footer">
 			<div class="validity">{{t 'offerValidity'}}</div>
 			<div class="copyright">{{t 'copyright'}}</div>
@@ -723,7 +734,6 @@ export async function invoiceTemplate(
 </body>
 </html>`;
 
-	// Compila il template con Handlebars
 	const template = Handlebars.compile(htmlTemplate);
 
 	return template({
@@ -733,10 +743,13 @@ export async function invoiceTemplate(
 		client_id: '202020',
 		client_email: to,
 		items: itemsWithImages,
-		logoBase64, // Logo incorporato come base64
+		logoBase64,
+		// PREZZI COMMENTATI - Variabili prezzi commentate
+		/*
 		subtotale,
 		iva,
 		totale,
+		*/
 	});
 }
 
