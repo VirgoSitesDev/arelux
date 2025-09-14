@@ -46,7 +46,9 @@
     "showVirtual": "Show virtual room",
     "editRoomSize": "Edit room size",
     "helpInfo": "Help and info",
-    "download": "Download configuration"
+    "download": "Download configuration",
+    "noDriver": "No Driver",
+    "proceedWithoutDriver": "Proceed without selecting any Driver as power source"
   },
   "invoice": {
     "title": "Quote",

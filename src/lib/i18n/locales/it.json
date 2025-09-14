@@ -46,7 +46,9 @@
     "showVirtual": "Mostra stanza virtuale",
     "editRoomSize": "Modifica dimensioni stanza",
     "helpInfo": "Aiuto e informazioni",
-    "download": "Scarica configurazione"
+    "download": "Scarica configurazione",
+    "noDriver": "Nessun Driver",
+    "proceedWithoutDriver": "Procedi senza selezionare un driver per l'alimentazione"
   },
   "invoice": {
     "title": "Preventivo",

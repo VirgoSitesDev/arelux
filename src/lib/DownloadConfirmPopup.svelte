@@ -15,18 +15,16 @@
 	import { pushState } from '$app/navigation';
 	import { cn } from '$shad/utils';
 	import type { SavedObject } from '../app';
-	import { _ , locale} from 'svelte-i18n';
-	// @ts-ignore
-	import html2pdf from 'html2pdf.js';
+	import { _ } from 'svelte-i18n';
+    // @ts-ignore
+    import html2pdf from 'html2pdf.js';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { Prohibit, ProhibitInset } from 'phosphor-svelte';
 
 	Handlebars.registerHelper('euros', (amount) =>
-	Number.parseFloat(amount).toFixed(2).replace('.', ','),
+		Number.parseFloat(amount).toFixed(2).replace('.', ','),
 	);
 	Handlebars.registerHelper('splitplus', (raw) => raw.split('+')[0]);
-
-	Handlebars.registerHelper('subtract', (a, b) => a - b);
-	Handlebars.registerHelper('multiply', (a, b) => a * b);
 
 	let {
 		closeCallback = () => {},
@@ -89,6 +87,7 @@
 		} else if (currentSystem === 'XNET' || currentSystem === 'xnet') {
 			return drivers;
 		}
+		
 		return drivers;
 	});
 
@@ -162,28 +161,31 @@
 		const items: { code: string; quantity: number; length?: number }[] = [];
 		for (const [code, quantity] of itemsMap) items.push({ code, quantity });
 
-		let quantity = Math.ceil(power / drivers.find((d) => d.code === currentDriver)!.power);
-		if (quantity > 0) {
-			quantity = Math.max(quantity, minDrivers);
-			if (currentDriver) items.push({ code: currentDriver, quantity });
-			if (currentPowerSupply) items.push({ code: currentPowerSupply, quantity });
-			if (currentBox) items.push({ code: currentBox, quantity });
+		if (currentDriver && currentDriver !== 'no-driver') {
+			const selectedDriverData = drivers.find((d) => d.code === currentDriver);
+			if (selectedDriverData) {
+				let quantity = Math.ceil(power / selectedDriverData.power);
+				quantity = Math.max(quantity, minDrivers);
+				
+				if (quantity > 0) {
+					items.push({ code: currentDriver, quantity });
+					if (currentPowerSupply) items.push({ code: currentPowerSupply, quantity });
+					if (currentBox) items.push({ code: currentBox, quantity });
+				}
+			}
 		}
-		
-		console.log('fiewifhwiehf');
+
 		const blob: string = await html2pdf()
 			.set({ margin: 6, html2canvas: { letterRendering: true, removeContainer: true } })
 			.from(await invoiceTemplate(page.data.supabase, page.data.tenant, email, items))
 			.output('blob')
 			.then(blobToBase64);
 
-		// NUOVO: Aggiungi il locale al payload per il backend
 		const resp = await page.data.supabase.functions.invoke('send_email', {
 			body: {
 				to: email,
 				tenant: page.data.tenant,
 				file: blob.replace('data:application/pdf;base64,', ''),
-				locale: get(locale) || 'it' // Passa il locale corrente
 			},
 		});
 
@@ -260,18 +262,22 @@
 		<span class="py-6 text-2xl font-light">
 			{$_("config.totalPower")}: {power}W.
 		</span>
-		<div class="grid gap-3" class:grid-cols-2={showIntrack && showRemote} class:grid-cols-1={!(showIntrack && showRemote)}>
-			<!-- Headers dinamici -->
+
+		<div class="grid gap-3" class:grid-cols-3={showIntrack && showRemote} class:grid-cols-2={(showIntrack && !showRemote) || (!showIntrack && showRemote)} class:grid-cols-1={!showIntrack && !showRemote}>
 			{#if showIntrack && showRemote}
 				<span class="text-center">INTRACK</span>
 				<span class="text-center">REMOTE</span>
+				<span class="text-center">NO DRIVER</span>
 			{:else if showIntrack}
 				<span class="text-center">INTRACK</span>
+				<span class="text-center">NO DRIVER</span>
 			{:else if showRemote}
 				<span class="text-center">REMOTE</span>
+				<span class="text-center">NO DRIVER</span>
+			{:else}
+				<span class="text-center">NO DRIVER</span>
 			{/if}
 			
-			<!-- Pulsante INTRACK (solo se disponibile) -->
 			{#if showIntrack && intrackDriver}
 				<div class="flex flex-col gap-3">
 					<button
@@ -316,7 +322,6 @@
 				</div>
 			{/if}
 			
-			<!-- Pulsante REMOTE (solo se disponibile) -->
 			{#if showRemote && remoteDriver}
 				<div class="flex flex-col gap-3">
 					<button
@@ -360,6 +365,32 @@
 					</button>
 				</div>
 			{/if}
+
+			<div class="flex flex-col gap-3">
+				<button
+					class={cn(
+						'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
+						currentDriver === 'no-driver' && 'border-primary',
+					)}
+					onclick={() => (currentDriver = 'no-driver')}
+				>
+					<div class="flex h-full flex-col justify-start">
+						<span class="mb-2 mt-3 text-lg font-medium">
+							{$_("config.noDriver")}
+						</span>
+		
+						<span class="text-sm text-muted-foreground">
+							{$_("config.proceedWithoutDriver")}
+						</span>
+					</div>
+		
+					<div class="relative ml-auto">
+						<div class="h-[125px] w-[125px] rounded-full border-4 border-gray-300 flex items-center justify-center bg-gray-50">
+							<Prohibit size={48} class="text-gray-600" />
+						</div>
+					</div>
+				</button>
+			</div>
 		</div>
 
 		<div class="mt-6 flex gap-5">
@@ -376,14 +407,12 @@
 				disabled={currentDriver === null}
 				onclick={() => {
 					const currentSystem = page.data.system.toLowerCase();
-
-					if (currentSystem === 'xfree_s' || currentSystem === 'xfrees') {
+					
+					if (currentDriver === 'no-driver') {
 						pushState('', { currentPage: 4 } as App.PageState);
-					}
-					else if (currentDriver && !currentDriver.startsWith('AT')) {
+					} else if (currentSystem === 'xfree s' || currentSystem === 'xfree_s') {
 						pushState('', { currentPage: 4 } as App.PageState);
-					}
-					else {
+					} else {
 						pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState);
 					}
 				}}
