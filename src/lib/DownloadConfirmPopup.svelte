@@ -25,7 +25,6 @@
 	);
 	Handlebars.registerHelper('splitplus', (raw) => raw.split('+')[0]);
 
-	// Aggiungi questi due helper
 	Handlebars.registerHelper('subtract', (a, b) => a - b);
 	Handlebars.registerHelper('multiply', (a, b) => a * b);
 
@@ -377,8 +376,16 @@
 				disabled={currentDriver === null}
 				onclick={() => {
 					const currentSystem = page.data.system.toLowerCase();
-					if (currentSystem === 'xfree s' || currentSystem === 'xfree_s') pushState('', { currentPage: 4 } as App.PageState);
-					else pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState);
+
+					if (currentSystem === 'xfree_s' || currentSystem === 'xfrees') {
+						pushState('', { currentPage: 4 } as App.PageState);
+					}
+					else if (currentDriver && !currentDriver.startsWith('AT')) {
+						pushState('', { currentPage: 4 } as App.PageState);
+					}
+					else {
+						pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState);
+					}
 				}}
 			>
 				{$_("invoice.next")} <ArrowRight size={22} class="ml-1" />
