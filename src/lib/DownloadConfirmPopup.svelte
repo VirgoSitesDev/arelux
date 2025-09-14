@@ -21,9 +21,13 @@
 	import { SvelteSet } from 'svelte/reactivity';
 
 	Handlebars.registerHelper('euros', (amount) =>
-		Number.parseFloat(amount).toFixed(2).replace('.', ','),
+	Number.parseFloat(amount).toFixed(2).replace('.', ','),
 	);
 	Handlebars.registerHelper('splitplus', (raw) => raw.split('+')[0]);
+
+	// Aggiungi questi due helper
+	Handlebars.registerHelper('subtract', (a, b) => a - b);
+	Handlebars.registerHelper('multiply', (a, b) => a * b);
 
 	let {
 		closeCallback = () => {},

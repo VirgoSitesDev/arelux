@@ -308,58 +308,125 @@ export async function invoiceTemplate(
 	}
 	for (const obj of prices_query.data) prices[obj.code] = obj.price_cents;
 
-	const mappedItems = items.map((i) => {
-		const basePrice = prices[i.code] / 100;
-		const finalPrice = basePrice * 0.75;
-		const totalPrice = finalPrice * i.quantity;
+	// Carica le immagini e convertile in base64
+	const itemsWithImages = await Promise.all(items.map(async (item) => {
+		try {
+			// Usa il codice base per le risorse come negli altri punti del codice
+			const baseCode = item.code.includes('UWW') ? item.code.replace(/UWW(R?)/g, 'WW$1') :
+							 item.code.includes('NW') ? item.code.replace(/NW(R?)/g, 'WW$1') : item.code;
+			
+			const imageUrl = supabase.storage
+				.from(tenant)
+				.getPublicUrl(`images/${baseCode}.webp`).data.publicUrl;
+			
+			const response = await fetch(imageUrl);
+			if (!response.ok) {
+				throw new Error(`Failed to fetch image: ${response.status}`);
+			}
+			
+			const blob = await response.blob();
+			const imageBase64 = await new Promise<string>((resolve, reject) => {
+				const reader = new FileReader();
+				reader.onloadend = () => resolve(reader.result as string);
+				reader.onerror = reject;
+				reader.readAsDataURL(blob);
+			});
+			
+			const basePrice = prices[item.code] / 100;
+			const finalPrice = basePrice * 0.75; // Sconto 25% come nel template originale
+			
+			return {
+				...item,
+				price: basePrice,
+				finalPrice,
+				totalPrice: finalPrice * item.quantity,
+				imageUrl: imageBase64 // Usa base64 invece dell'URL
+			};
+		} catch (error) {
+			console.error(`Errore caricamento immagine per ${item.code}:`, error);
+			const basePrice = prices[item.code] / 100;
+			const finalPrice = basePrice * 0.75;
+			
+			return {
+				...item,
+				price: basePrice,
+				finalPrice,
+				totalPrice: finalPrice * item.quantity,
+				imageUrl: null // Nessuna immagine disponibile
+			};
+		}
+	}));
 
-		const imageUrl = supabase.storage
-			.from(tenant)
-			.getPublicUrl(`images/${i.code}.webp`).data.publicUrl;
+	// Carica anche il logo aziendale
+	let logoBase64 = '';
+	try {
+		const logoUrl = supabase.storage.from(tenant).getPublicUrl(`${tenant}.png`).data.publicUrl;
+		const logoResponse = await fetch(logoUrl);
+		if (logoResponse.ok) {
+			const logoBlob = await logoResponse.blob();
+			logoBase64 = await new Promise<string>((resolve, reject) => {
+				const reader = new FileReader();
+				reader.onloadend = () => resolve(reader.result as string);
+				reader.onerror = reject;
+				reader.readAsDataURL(logoBlob);
+			});
+		}
+	} catch (error) {
+		console.error('Errore caricamento logo:', error);
+	}
 
-		console.log(imageUrl);
-		
-		return {
-			...i,
-			price: basePrice,
-			finalPrice,
-			totalPrice,
-			imageUrl
-		};
-	});
-
-	const subtotale = mappedItems.reduce((a, v) => a + v.totalPrice, 0);
+	const subtotale = itemsWithImages.reduce((a, v) => a + v.totalPrice, 0);
 	const iva = 22; // Percentuale IVA
 	const ivaAmount = subtotale * (iva / 100);
 	const totale = subtotale + ivaAmount;
 
-	// 🆕 NUOVO: Ottieni la lingua corrente dal store
-	const currentLocale = get(locale) || 'it';
-	const translations = getPdfTranslations(currentLocale);
+	Handlebars.registerHelper('euros', (amount: number) =>
+		Number.parseFloat(amount.toString()).toFixed(2).replace('.', ',')
+	);
 
-	// 🆕 NUOVO: Registra gli helper Handlebars con le traduzioni
-	Handlebars.registerHelper('t', function(key: string) {
-		return translations[key as keyof typeof translations] || key;
-	});
-
-	// 🆕 NUOVO: Helper per tradurre le descrizioni dei prodotti
-	Handlebars.registerHelper('translateDesc', function(code: string) {
-		// Trova la descrizione del prodotto dal catalogo e traducila
-		// Puoi personalizzare questa logica secondo le tue esigenze
-		return translateDatabaseText(code);
-	});
-
-	// 🆕 NUOVO: Helper per calcoli matematici
-	Handlebars.registerHelper('multiply', function(a: number, b: number) {
+	Handlebars.registerHelper('multiply', (a: number, b: number) => {
 		return a * b;
 	});
 
-	Handlebars.registerHelper('divide', function(a: number, b: number) {
-		return a / b;
+	Handlebars.registerHelper('divide', (a: number, b: number) => {
+		return b !== 0 ? a / b : 0;
 	});
 
-	const templateHTML = `<!DOCTYPE html>
-<html lang="{{locale}}">
+	Handlebars.registerHelper('add', (a: number, b: number) => {
+		return a + b;
+	});
+
+	// Helper per le traduzioni (se non hai il sistema di traduzione, usa testi fissi)
+	Handlebars.registerHelper('t', function(key: string) {
+		const translations: Record<string, string> = {
+			'pdfTitle': 'Preventivo Arelux',
+			'date': 'Data',
+			'client': 'Cliente',
+			'quoteNumber': 'Preventivo N°',
+			'areluxOffer': 'OFFERTA ARELUX',
+			'professionalLighting': 'Illuminazione Professionale',
+			'image': 'Immagine',
+			'product': 'Prodotto',
+			'price': 'Prezzo',
+			'units': 'Unità',
+			'totalPrice': 'Totale',
+			'currency': '€',
+			'professionalComponent': 'Componente professionale',
+			'highEfficiency': 'Alta efficienza',
+			'premiumQuality': 'Qualità premium',
+			'transportWithoutVAT': 'Trasporto senza IVA',
+			'subtotalWithoutVAT': 'Subtotale senza IVA',
+			'vat': 'IVA',
+			'totalWithVAT': 'TOTALE con IVA',
+			'offerValidity': 'Offerta valida 30 giorni',
+			'copyright': '© 2024 Arelux - Tutti i diritti riservati'
+		};
+		return translations[key] || key;
+	});
+
+	// Il tuo template originale ma con logoUrl sostituito da logoBase64
+	const htmlTemplate = `<!DOCTYPE html>
+<html lang="it">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -401,12 +468,14 @@ export async function invoiceTemplate(
 			height: 90px; 
 			display: flex; 
 			align-items: center; 
-			justify-content: center; 
+			justify-content: center;
+			align-self: center;
+			padding-bottom: 30px;
 		}
 		.logo img { 
 			max-width: 120px; 
 			max-height: 90px; 
-			object-fit: contain; 
+			object-fit: contain;
 		}
 		.company-details { 
 			font-size: 10px; 
@@ -567,7 +636,11 @@ export async function invoiceTemplate(
 		<div class="header">
 			<div class="company-info">
 				<div class="logo">
-					<img src="{{logoUrl}}" alt="Arelux Logo" onerror="this.style.display='none'; this.parentNode.innerHTML='<div style=\\'background: #333; color: white; padding: 20px 10px; text-align: center; font-weight: bold; font-size: 14px; border-radius: 4px;\\'>ARELUX</div>';">
+					{{#if logoBase64}}
+						<img src="{{logoBase64}}" alt="Arelux Logo">
+					{{else}}
+						<div style="background: #333; color: white; padding: 20px 10px; text-align: center; font-weight: bold; font-size: 14px; border-radius: 4px;">ARELUX</div>
+					{{/if}}
 				</div>
 				<div class="company-details">
 					contact@arelux.ro<br>
@@ -599,12 +672,13 @@ export async function invoiceTemplate(
 			<tbody>
 				{{#each items}}
 				<tr>
-					<td class="item-number">{{@index1}}</td>
+					<td class="item-number">{{add @index 1}}</td>
 					<td>
-						<img src="{{imageUrl}}" 
-							alt="{{code}}" 
-							class="product-image" 
-							onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjRjhGOUZBIiBzdHJva2U9IiNFMEUwRTAiLz4KPHN2ZyB4PSIxNSIgeT0iMTUiIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KPHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiByeD0iMiIgcnk9IjIiLz4KPGNpcmNsZSBjeD0iOC41IiBjeT0iOC4yIiByPSIxLjUiLz4KPHBvbHlsaW5lIHBvaW50cz0iMjEsMTUgMTYsMTAgNSwyMSIvPgo8L3N2Zz4KPC9zdmc+'; this.onerror=null;">
+						{{#if imageUrl}}
+							<img src="{{imageUrl}}" alt="{{code}}" class="product-image">
+						{{else}}
+							<div style="width: 60px; height: 60px; background: #f8f9fa; border: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 8px; color: #666; margin: 0 auto;">Immagine non disponibile</div>
+						{{/if}}
 					</td>
 					<td class="product-info">
 						<div class="product-code">{{code}}</div>
@@ -649,24 +723,17 @@ export async function invoiceTemplate(
 </body>
 </html>`;
 
-	const template = Handlebars.compile(templateHTML);
-	
-	const now = new Date();
-	const dateStr = now.toLocaleDateString('it-IT');
-	const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-
-	// URL del logo Arelux da Supabase
-	const logoUrl = supabase.storage
-		.from(tenant)
-		.getPublicUrl(`${tenant}.png`).data.publicUrl;
+	// Compila il template con Handlebars
+	const template = Handlebars.compile(htmlTemplate);
 
 	return template({
-		date: dateStr,
-		time: timeStr,
-		invoice_number: crypto.randomUUID().slice(0, 8),
+		locale: 'it',
+		date: new Date(Date.now()).toLocaleString().split(',')[0],
+		invoice_number: '8/18/12',
+		client_id: '202020',
 		client_email: to,
-		logoUrl,
-		items: mappedItems,
+		items: itemsWithImages,
+		logoBase64, // Logo incorporato come base64
 		subtotale,
 		iva,
 		totale,
