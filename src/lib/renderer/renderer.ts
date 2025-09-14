@@ -1304,94 +1304,73 @@ export class Renderer {
 		this.#systemOffset.set(0, 0, 0);
 	}
 
-// In src/lib/renderer/renderer.ts
-// SOSTITUISCI il metodo rotateConfiguration esistente con questo:
+	rotateConfiguration(configuration: Set<TemporaryObject>): void {
+		if (configuration.size === 0) return;
 
-rotateConfiguration(configuration: Set<TemporaryObject>): void {
-    if (configuration.size === 0) return;
+		console.log('🔄 === ROTAZIONE STILE CAD ===');
 
-    console.log('🔄 === ROTAZIONE STILE CAD ===');
+		const objects = Array.from(configuration).filter(obj => obj.mesh);
+		if (objects.length === 0) return;
 
-    // 1. Filtra solo gli oggetti con mesh
-    const objects = Array.from(configuration).filter(obj => obj.mesh);
-    if (objects.length === 0) return;
+		let centerX = 0;
+		let centerZ = 0;
+		
+		objects.forEach(obj => {
+			if (obj.mesh) {
+				centerX += obj.mesh.position.x;
+				centerZ += obj.mesh.position.z;
+			}
+		});
+		
+		centerX /= objects.length;
+		centerZ /= objects.length;
+		
+		console.log('📍 Centro configurazione: (' + centerX.toFixed(2) + ', ' + centerZ.toFixed(2) + ')');
 
-    // 2. Calcola il centro geometrico della configurazione ATTUALE
-    let centerX = 0;
-    let centerZ = 0;
-    
-    objects.forEach(obj => {
-        if (obj.mesh) {
-            centerX += obj.mesh.position.x;
-            centerZ += obj.mesh.position.z;
-        }
-    });
-    
-    centerX /= objects.length;
-    centerZ /= objects.length;
-    
-    console.log('📍 Centro configurazione: (' + centerX.toFixed(2) + ', ' + centerZ.toFixed(2) + ')');
+		const pivot = new Group();
+		pivot.position.set(centerX, 0, centerZ);
+		this.#scene.add(pivot);
 
-    // 3. Crea un pivot point (punto di rotazione) al centro
-    const pivot = new Group();
-    pivot.position.set(centerX, 0, centerZ);
-    this.#scene.add(pivot);
+		objects.forEach(obj => {
+			if (obj.mesh) {
+				const worldPos = obj.mesh.position.clone();
 
-    // 4. Sposta tutti gli oggetti nel pivot (mantenendo posizione relativa)
-    objects.forEach(obj => {
-        if (obj.mesh) {
-            const worldPos = obj.mesh.position.clone();
-            
-            // Rimuovi dalla scena
-            this.#scene.remove(obj.mesh);
-            
-            // Calcola posizione relativa al pivot
-            obj.mesh.position.set(
-                worldPos.x - centerX,
-                worldPos.y,
-                worldPos.z - centerZ
-            );
-            
-            // Aggiungi al pivot
-            pivot.add(obj.mesh);
-        }
-    });
+				this.#scene.remove(obj.mesh);
 
-    // 5. Ruota tutto il pivot di 90° (questo ruota TUTTO insieme)
-    pivot.rotateY(Math.PI / 2);  // 90° in senso antiorario
-    
-    console.log('🔄 Pivot ruotato di 90°');
+				obj.mesh.position.set(
+					worldPos.x - centerX,
+					worldPos.y,
+					worldPos.z - centerZ
+				);
+				pivot.add(obj.mesh);
+			}
+		});
 
-    // 6. Rimetti gli oggetti nella scena con le nuove trasformazioni
-    objects.forEach(obj => {
-        if (obj.mesh) {
-            // Calcola la nuova posizione mondiale
-            const newWorldPos = new Vector3();
-            obj.mesh.getWorldPosition(newWorldPos);
-            
-            // Salva la rotazione attuale
-            const newWorldQuaternion = new Quaternion();
-            obj.mesh.getWorldQuaternion(newWorldQuaternion);
-            
-            // Rimuovi dal pivot
-            pivot.remove(obj.mesh);
-            
-            // Rimetti nella scena con le nuove trasformazioni
-            obj.mesh.position.copy(newWorldPos);
-            obj.mesh.quaternion.copy(newWorldQuaternion);
-            this.#scene.add(obj.mesh);
-            
-            console.log('✅ Oggetto ' + obj.getCatalogEntry().code + ': nuova pos (' + newWorldPos.x.toFixed(1) + ', ' + newWorldPos.z.toFixed(1) + ')');
-        }
-    });
+		pivot.rotateY(Math.PI / 2);
+		
+		console.log('🔄 Pivot ruotato di 90°');
 
-    // 7. Pulisci il pivot
-    this.#scene.remove(pivot);
-    
-    console.log('✅ === ROTAZIONE CAD COMPLETATA ===');
-}
-	
-	// Aggiungi questo metodo per resettare quando cambi configurazione
+		objects.forEach(obj => {
+			if (obj.mesh) {
+				const newWorldPos = new Vector3();
+				obj.mesh.getWorldPosition(newWorldPos);
+				const newWorldQuaternion = new Quaternion();
+				obj.mesh.getWorldQuaternion(newWorldQuaternion);
+				pivot.remove(obj.mesh);
+
+				obj.mesh.position.copy(newWorldPos);
+				obj.mesh.quaternion.copy(newWorldQuaternion);
+				this.#scene.add(obj.mesh);
+				
+				console.log('✅ Oggetto ' + obj.getCatalogEntry().code + ': nuova pos (' + newWorldPos.x.toFixed(1) + ', ' + newWorldPos.z.toFixed(1) + ')');
+			}
+		});
+
+		this.#scene.remove(pivot);
+		
+		console.log('✅ === ROTAZIONE CAD COMPLETATA ===');
+	}
+
 	resetConfigurationRotation(): void {
 		this.#configurationOriginalPositions.clear();
 		this.#configurationCenter = null;
