@@ -15,7 +15,7 @@
 	import { pushState } from '$app/navigation';
 	import { cn } from '$shad/utils';
 	import type { SavedObject } from '../app';
-	import { _ } from 'svelte-i18n';
+	import { _ , locale} from 'svelte-i18n';
 	// @ts-ignore
 	import html2pdf from 'html2pdf.js';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -152,43 +152,6 @@
 				itemsMap.set(key2, 1 + (itemsMap.get(key2) ?? 0));
 			}
 		}
-
-		for (const object of $objects) {
-			let objectFamily = null;
-			for (const [familyCode, family] of Object.entries(page.data.families)) {
-				if (family.items.some(item => item.code === object.code)) {
-					objectFamily = family;
-					break;
-				}
-			}
-
-			if (objectFamily && objectFamily.code === 'profili-superficiali-35mm') {
-				const familyItem = objectFamily.items.find(item => item.code === object.code);
-				
-				if (familyItem) {
-					const isProfileCurvo = familyItem.deg > 0;
-					const lunghezza = object.length || familyItem.len || 0;
-					
-					let quantitaXNS01CF = 0;
-					
-					if (isProfileCurvo) {
-						quantitaXNS01CF = 2;
-					} else {
-						if (lunghezza <= 1500) {
-							quantitaXNS01CF = 2;
-						} else if (lunghezza <= 2500) {
-							quantitaXNS01CF = 3;
-						}
-					}
-					
-					if (quantitaXNS01CF > 0) {
-						const currentXNS01CF = itemsMap.get('XNS01CF') || 0;
-						itemsMap.set('XNS01CF', currentXNS01CF + quantitaXNS01CF);
-					}
-				}
-			}
-		}
-
 		for (const led of leds) {
 			if (led.amount > 0) itemsMap.set(led.code, led.amount);
 		}
@@ -203,38 +166,20 @@
 			if (currentPowerSupply) items.push({ code: currentPowerSupply, quantity });
 			if (currentBox) items.push({ code: currentBox, quantity });
 		}
-
+		
 		const blob: string = await html2pdf()
-				.set({ 
-					margin: 6, 
-					filename: 'preventivo-arelux.pdf',
-					html2canvas: { 
-						scale: 3,
-						useCORS: true,
-						allowTaint: true,
-						letterRendering: true, 
-						removeContainer: true,
-						width: 794,
-						height: 1123,
-						dpi: 300,
-						format: 'A4'
-					},
-					jsPDF: {
-						unit: 'mm',
-						format: 'a4',
-						orientation: 'portrait',
-						compress: true
-					}
-				})
-				.from(await invoiceTemplate(page.data.supabase, page.data.tenant, email, items))
-				.output('blob')
-				.then(blobToBase64);
+			.set({ margin: 6, html2canvas: { letterRendering: true, removeContainer: true } })
+			.from(await invoiceTemplate(page.data.supabase, page.data.tenant, email, items))
+			.output('blob')
+			.then(blobToBase64);
 
+		// NUOVO: Aggiungi il locale al payload per il backend
 		const resp = await page.data.supabase.functions.invoke('send_email', {
 			body: {
 				to: email,
 				tenant: page.data.tenant,
 				file: blob.replace('data:application/pdf;base64,', ''),
+				locale: get(locale) || 'it' // Passa il locale corrente
 			},
 		});
 

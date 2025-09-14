@@ -61,7 +61,29 @@
     "send": "Invia",
     "next": "Avanti",
     "heads": "Seleziona quali teste vuoi installare:",
-    "box": "Seleziona quali scatole vuoi installare:"
+    "box": "Seleziona quali scatole vuoi installare:",
+    "pdf": {
+      "documentTitle": "Preventivo",
+      "quote": "Preventivo",
+      "date": "Data",
+      "invoiceNumber": "Numero Preventivo",
+      "clientId": "ID Cliente",
+      "clientEmail": "Email Cliente",
+      "items": "Articoli",
+      "code": "Codice",
+      "description": "Descrizione",
+      "quantity": "Quantità",
+      "unitPrice": "Prezzo Unitario",
+      "totalPrice": "Prezzo Totale",
+      "subtotal": "Subtotale",
+      "vat": "IVA",
+      "total": "Totale",
+      "currency": "€",
+      "validityNote": "Il presente preventivo ha validità di 30 giorni dalla data di emissione.",
+      "contactInfo": "Per informazioni contattare:",
+      "footerNote": "Generato automaticamente dal configuratore ARELUX",
+      "companyName": "ARELUX - Sistema di illuminazione professionale"
+    }
   },
   "lights": {
     "moveLight": "Sposta luce",

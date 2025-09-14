@@ -15,6 +15,9 @@ import type { Vector3Like } from 'three';
 import type { RendererObject } from './renderer/objects';
 import _ from 'lodash';
 import { getRequiredConnector4Family } from './connectorRules';
+import { getPdfTranslations } from './pdfTranslations';
+import { locale } from 'svelte-i18n';
+import { translateDatabaseText } from './i18n/dbTranslator';
 
 export let objects: Writable<SavedObject[]> = writable([]);
 
@@ -305,47 +308,44 @@ export async function invoiceTemplate(
 	}
 	for (const obj of prices_query.data) prices[obj.code] = obj.price_cents;
 
-	Handlebars.registerHelper('euros', (amount: number) =>
-		Number.parseFloat(amount.toString()).toFixed(2).replace('.', ',')
-	);
-	
-	Handlebars.registerHelper('multiply', (a: number, b: number) => {
+	const mappedItems = items
+		.map((i) => ({ ...i, price: prices[i.code] / 100 }))
+		.map((i) => ({ ...i, totalPrice: i.price * i.quantity }));
+	const subtotale = mappedItems.reduce((a, v) => a + v.totalPrice, 0);
+	const iva = 0.22;
+	const totale = subtotale + subtotale * iva;
+
+	// 🆕 NUOVO: Ottieni la lingua corrente dal store
+	const currentLocale = get(locale) || 'it';
+	const translations = getPdfTranslations(currentLocale);
+
+	// 🆕 NUOVO: Registra gli helper Handlebars con le traduzioni
+	Handlebars.registerHelper('t', function(key: string) {
+		return translations[key as keyof typeof translations] || key;
+	});
+
+	// 🆕 NUOVO: Helper per tradurre le descrizioni dei prodotti
+	Handlebars.registerHelper('translateDesc', function(code: string) {
+		// Trova la descrizione del prodotto dal catalogo e traducila
+		// Puoi personalizzare questa logica secondo le tue esigenze
+		return translateDatabaseText(code);
+	});
+
+	// 🆕 NUOVO: Helper per calcoli matematici
+	Handlebars.registerHelper('multiply', function(a: number, b: number) {
 		return a * b;
 	});
-	
-	Handlebars.registerHelper('divide', (a: number, b: number) => {
-		return b !== 0 ? a / b : 0;
-	});
 
-	const mappedItems = items.map((i) => {
-		const basePrice = prices[i.code] / 100;
-		const finalPrice = basePrice * 0.75;
-		const totalPrice = finalPrice * i.quantity;
-
-		const imageUrl = supabase.storage
-			.from(tenant)
-			.getPublicUrl(`images/${i.code}.webp`).data.publicUrl;
-		
-		return {
-			...i,
-			price: basePrice,
-			finalPrice,
-			totalPrice,
-			imageUrl
-		};
+	Handlebars.registerHelper('divide', function(a: number, b: number) {
+		return a / b;
 	});
-		
-	const subtotale = mappedItems.reduce((a, v) => a + v.totalPrice, 0);
-	const iva = 22;
-	const ivaAmount = subtotale * (iva / 100);
-	const totale = subtotale + ivaAmount;
 
 	const templateHTML = `<!DOCTYPE html>
-	<html lang="en">
+	<html lang="{{locale}}">
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>Preventivo Arelux</title>
+		<title>{{t 'pdfTitle'}}</title>
 		<style>
 			* { 
 				margin: 0; 
@@ -558,24 +558,24 @@ export async function invoiceTemplate(
 					</div>
 				</div>
 				<div class="header-right">
-					<strong>Date: {{date}}</strong><br>
-					Client: {{client_email}}<br>
-					Quote #: {{invoice_number}}
+					<strong>{{t 'date'}}: {{date}}</strong><br>
+					{{t 'client'}}: {{client_email}}<br>
+					{{t 'quoteNumber'}}: {{invoice_number}}
 				</div>
 			</div>
 			<div class="offer-title">
-				<h1>Arelux offer</h1>
-				<h2>PROFESSIONAL LIGHTING SYSTEMS</h2>
+				<h1>{{t 'areluxOffer'}}</h1>
+				<h2>{{t 'professionalLighting'}}</h2>
 			</div>
 			<table class="products-table">
 				<thead>
 					<tr>
 						<th style="width: 40px;">#</th>
-						<th style="width: 80px;">Image</th>
-						<th style="width: 350px;">Product</th>
-						<th style="width: 80px;">Price</th>
-						<th style="width: 60px;">Units</th>
-						<th style="width: 100px;">Total price</th>
+						<th style="width: 80px;">{{t 'image'}}</th>
+						<th style="width: 350px;">{{t 'product'}}</th>
+						<th style="width: 80px;">{{t 'price'}}</th>
+						<th style="width: 60px;">{{t 'units'}}</th>
+						<th style="width: 100px;">{{t 'totalPrice'}}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -591,14 +591,14 @@ export async function invoiceTemplate(
 						<td class="product-info">
 							<div class="product-code">{{code}}</div>
 							<div class="product-desc">
-								Professional lighting component<br>
-								High efficiency LED technology<br>
-								Premium quality materials
+								{{t 'professionalComponent'}}<br>
+								{{t 'highEfficiency'}}<br>
+								{{t 'premiumQuality'}}
 							</div>
 						</td>
-						<td class="price">€{{euros finalPrice}}</td>
+						<td class="price">{{t 'currency'}}{{euros finalPrice}}</td>
 						<td>{{quantity}}</td>
-						<td class="price total-price">€{{euros totalPrice}}</td>
+						<td class="price total-price">{{t 'currency'}}{{euros totalPrice}}</td>
 					</tr>
 					{{/each}}
 				</tbody>
@@ -606,30 +606,30 @@ export async function invoiceTemplate(
 			<div class="totals-section">
 				<table class="totals-table">
 					<tr>
-						<td class="label">Transport without VAT:</td>
-						<td class="value">€0,00</td>
+						<td class="label">{{t 'transportWithoutVAT'}}:</td>
+						<td class="value">{{t 'currency'}}0,00</td>
 					</tr>
 					<tr>
-						<td class="label">Subtotal without VAT:</td>
-						<td class="value">€{{euros subtotale}}</td>
+						<td class="label">{{t 'subtotalWithoutVAT'}}:</td>
+						<td class="value">{{t 'currency'}}{{euros subtotale}}</td>
 					</tr>
 					<tr>
-						<td class="label">VAT ({{iva}}%):</td>
-						<td class="value">€{{euros (multiply subtotale (divide iva 100))}}</td>
+						<td class="label">{{t 'vat'}} ({{iva}}%):</td>
+						<td class="value">{{t 'currency'}}{{euros (multiply subtotale (divide iva 100))}}</td>
 					</tr>
 					<tr>
-						<td class="label total-final">Total with VAT:</td>
-						<td class="value total-final">€{{euros totale}}</td>
+						<td class="label total-final">{{t 'totalWithVAT'}}:</td>
+						<td class="value total-final">{{t 'currency'}}{{euros totale}}</td>
 					</tr>
 				</table>
 			</div>
 			<div class="footer">
-				<div class="validity">The offer is valid for 30 days.</div>
-				<div class="copyright">© Copyright 2024 Arelux SRL</div>
+				<div class="validity">{{t 'offerValidity'}}</div>
+				<div class="copyright">{{t 'copyright'}}</div>
 			</div>
 		</div>
 	</body>
-	</html>`;
+	</html>`
 
 	const template = Handlebars.compile(templateHTML);
 	
