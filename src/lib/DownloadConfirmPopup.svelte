@@ -467,34 +467,45 @@
 					<ArrowLeft size={22} class="mr-1" /> {$_("common.back")}
 				</Button.Root>
 			{/if}
+
 			<Button.Root
 				class={button({ class: 'flex' })}
 				disabled={systems.some(s => s.currentDriver === null)}
 				onclick={() => {
 					const currentSystem = page.data.system.toLowerCase().replace(' ', '_');
-					if (currentSystem === 'xfree_s' || currentSystem === 'xfrees') {
+					const allIntrack = systems.every(s => s.currentDriver && !s.currentDriver.startsWith('AT'));
+					const hasIntrack = systems.some(s => s.currentDriver && !s.currentDriver.startsWith('AT'));
+
+					if (allIntrack) {
 						pushState('', { currentPage: 4 } as App.PageState);
-					} else {
+					}
+					else if (hasIntrack) {
 						pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState);
+					}
+					else {
+						if (currentSystem === 'xfree_s' || currentSystem === 'xfrees') {
+							pushState('', { currentPage: 4 } as App.PageState);
+						}
+						else {
+							pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState);
+						}
 					}
 				}}
 			>
 				{$_("invoice.next")} <ArrowRight size={22} class="ml-1" />
 			</Button.Root>
 		</div>
-	{:else if page.state.currentPage === 2}
-		<span class="text-5xl font-semibold">{$_("invoice.heads")}</span>
+		{:else if page.state.currentPage === 2}
+			<span class="text-5xl font-semibold">{$_("invoice.heads")}</span>
+			<span class="py-6 text-2xl font-light">
+				{$_("config.totalPower")}: {power}W.
+			</span>
 		
-		<div class="max-h-[70vh] overflow-y-auto">
-			{#each systems as system, systemIndex}
-				<div class="mb-8 border-b-2 border-gray-200 pb-6">
-					<div class="mb-4">
-						<h3 class="text-2xl font-semibold">{system.id}</h3>
-						<span class="text-lg text-gray-600">
-							{$_("config.totalPower")}: {system.totalPower}W
-						</span>
-					</div>
-
+			<!-- Mostra solo i sistemi che NON hanno driver INTRACK -->
+			{#each systems.filter(system => system.currentDriver && system.currentDriver.startsWith('AT')) as system, systemIndex}
+			{@const originalSystemIndex = systems.indexOf(system)}
+				<div class="mb-6">
+					<h3 class="mb-3 text-xl font-medium">Sistema {originalSystemIndex + 1} - {system.currentDriver}</h3>
 					<div class="grid grid-cols-2 gap-3">
 						{#each powerSupplies as psu}
 							{@const url = page.data.supabase.storage
@@ -506,23 +517,20 @@
 									system.currentPowerSupply === psu && 'border-primary',
 								)}
 								onclick={() => {
-									systems[systemIndex].currentPowerSupply = psu;
-									systems = [...systems];
+									systems[systems.indexOf(system)].currentPowerSupply = psu;
 								}}
 							>
 								<div class="flex h-full flex-col justify-start">
 									<span class="mb-2 mt-3 text-lg font-medium">
 										{psu}
 									</span>
-
 									<span class="text-sm text-muted-foreground">
 										{$_("config.quantity")}: {Math.max(
-											Math.ceil(system.totalPower / drivers.find((d) => d.code === system.currentDriver)!.power),
+											Math.ceil(power / drivers.find((d) => d.code === system.currentDriver)!.power),
 											minDrivers,
 										)}
 									</span>
 								</div>
-
 								<div class="relative ml-auto">
 									<img
 										src={url}
@@ -535,7 +543,6 @@
 											loaded.has(url) || 'opacity-0',
 										)}
 									/>
-
 									<div
 										class={cn(
 											'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
@@ -548,126 +555,122 @@
 					</div>
 				</div>
 			{/each}
-		</div>
-
-		<div class="mt-6 flex gap-5">
-			<Button.Root
-				class={button({ class: 'flex', color: 'secondary' })}
-				onclick={() => history.back()}
-			>
-				<ArrowLeft size={22} class="mr-1" /> {$_("common.back")}
-			</Button.Root>
-			<Button.Root
-				class={button({ class: 'flex' })}
-				disabled={systems.some(s => s.currentPowerSupply === null)}
-				onclick={() =>
-					pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState)}
-			>
-				{$_("invoice.next")} <ArrowRight size={22} class="ml-1" />
-			</Button.Root>
-		</div>
-	{:else if page.state.currentPage === 3}
-		<span class="mb-6 text-5xl font-semibold">{$_("invoice.box")}</span>
-
-		<div class="max-h-[70vh] overflow-y-auto">
-			{#each systems as system, systemIndex}
-				{@const hasRemoteDriver = system.currentDriver && system.currentDriver.startsWith('AT')}
-				{#if hasRemoteDriver}
-					<div class="mb-8 border-b-2 border-gray-200 pb-6">
-						<div class="mb-4">
-							<h3 class="text-2xl font-semibold">{system.id}</h3>
-							<span class="text-lg text-gray-600">
-								{$_("config.totalPower")}: {system.totalPower}W
-							</span>
-							<div class="text-sm text-gray-500 mt-1">
-								Driver REMOTE - richiede box di contenimento
-							</div>
-						</div>
-
-						<div class="flex flex-col gap-3">
-							{#each boxes as box}
-								{@const url = page.data.supabase.storage
-									.from(page.data.tenant)
-									.getPublicUrl(`images/${box}.webp`).data.publicUrl}
-								<button
-									class={cn(
-										'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
-										system.currentBox === box && 'border-primary',
-									)}
-									onclick={() => {
-										systems[systemIndex].currentBox = box;
-										systems = [...systems];
-									}}
-								>
-									<div class="flex h-full flex-col justify-start">
-										<span class="mb-2 mt-3 text-lg font-medium">
-											{box}
-										</span>
-
-										<span class="text-sm text-muted-foreground">
-											{$_("config.quantity")}: {Math.max(
-												Math.ceil(system.totalPower / drivers.find((d) => d.code === system.currentDriver)!.power),
-												minDrivers,
-											)}
-										</span>
-									</div>
-
-									<div class="relative ml-auto">
-										<img
-											src={url}
-											width="125"
-											height="125"
-											alt=""
-											onload={() => loaded.add(url)}
-											class={cn(
-												'h-[125px] rounded-full border-4 transition-all',
-												loaded.has(url) || 'opacity-0',
-											)}
-										/>
-
-										<div
-											class={cn(
-												'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
-												loaded.has(url) && 'hidden',
-											)}
-										></div>
-									</div>
-								</button>
-							{/each}
-						</div>
+		
+			<!-- Se non ci sono sistemi REMOTE, mostra messaggio -->
+			{#if systems.every(s => s.currentDriver && !s.currentDriver.startsWith('AT'))}
+				<div class="text-center py-6">
+					<p class="text-lg text-muted-foreground">
+						Tutti i sistemi utilizzano driver INTRACK - nessun alimentatore necessario
+					</p>
+				</div>
+			{/if}
+		
+			<div class="mt-6 flex gap-5">
+				<Button.Root
+					class={button({ class: 'flex', color: 'secondary' })}
+					onclick={() => history.back()}
+				>
+					<ArrowLeft size={22} class="mr-1" /> {$_("common.back")}
+				</Button.Root>
+				<Button.Root
+					class={button({ class: 'flex' })}
+					disabled={systems.filter(s => s.currentDriver && s.currentDriver.startsWith('AT')).some(s => s.currentPowerSupply === null)}
+					onclick={() => {
+						// Se non ci sono sistemi REMOTE, vai direttamente all'email
+						if (systems.every(s => s.currentDriver && !s.currentDriver.startsWith('AT'))) {
+							pushState('', { currentPage: 4 } as App.PageState);
+						} else {
+							pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState);
+						}
+					}}
+				>
+					{$_("invoice.next")} <ArrowRight size={22} class="ml-1" />
+				</Button.Root>
+			</div>
+		
+		{:else if page.state.currentPage === 3}
+			<span class="mb-6 text-5xl font-semibold">{$_("invoice.box")}</span>
+		
+			<!-- Mostra solo i sistemi che NON hanno driver INTRACK -->
+			{#each systems.filter(system => system.currentDriver && system.currentDriver.startsWith('AT')) as system, systemIndex}
+				{@const originalSystemIndex = systems.indexOf(system)}
+				<div class="mb-6">
+					<h3 class="mb-3 text-xl font-medium">Sistema {originalSystemIndex + 1} - {system.currentDriver}</h3>
+					<div class="flex flex-col gap-3">
+						{#each boxes as box}
+							{@const url = page.data.supabase.storage
+								.from(page.data.tenant)
+								.getPublicUrl(`images/${box}.webp`).data.publicUrl}
+							<button
+								class={cn(
+									'flex w-full items-start gap-6 rounded-md border-2 p-2 text-left transition-colors',
+									system.currentBox === box && 'border-primary',
+								)}
+								onclick={() => {
+									systems[systems.indexOf(system)].currentBox = box;
+								}}
+							>
+								<div class="flex h-full flex-col justify-start">
+									<span class="mb-2 mt-3 text-lg font-medium">
+										{box}
+									</span>
+									<span class="text-sm text-muted-foreground">
+										{$_("config.quantity")}: {Math.max(
+											Math.ceil(power / drivers.find((d) => d.code === system.currentDriver)!.power),
+											minDrivers,
+										)}
+									</span>
+								</div>
+								<div class="relative ml-auto">
+									<img
+										src={url}
+										width="125"
+										height="125"
+										alt=""
+										onload={() => loaded.add(url)}
+										class={cn(
+											'h-[125px] rounded-full border-4 transition-all',
+											loaded.has(url) || 'opacity-0',
+										)}
+									/>
+									<div
+										class={cn(
+											'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
+											loaded.has(url) && 'hidden',
+										)}
+									></div>
+								</div>
+							</button>
+						{/each}
 					</div>
-				{:else}
-					<div class="mb-8 border-b-2 border-gray-200 pb-6">
-						<div class="mb-4">
-							<h3 class="text-2xl font-semibold">{system.id}</h3>
-							<span class="text-lg text-gray-600">
-								{$_("config.totalPower")}: {system.totalPower}W
-							</span>
-							<div class="text-sm text-green-600 mt-1">
-								✓ Driver INTRACK - nessun box necessario
-							</div>
-						</div>
-					</div>
-				{/if}
+				</div>
 			{/each}
-		</div>
-
-		<div class="mt-6 flex gap-5">
-			<Button.Root
-				class={button({ class: 'flex', color: 'secondary' })}
-				onclick={() => history.back()}
-			>
-				<ArrowLeft size={22} class="mr-1" /> {$_("common.back")}
-			</Button.Root>
-			<Button.Root
-				class={button({ class: 'flex' })}
-				disabled={systems.filter(s => s.currentDriver?.startsWith('AT')).some(s => s.currentBox === null)}
-				onclick={() =>
-					pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState)}
-			>
-				{$_("invoice.next")} <ArrowRight size={22} class="ml-1" />
-			</Button.Root>
-		</div>
+		
+			<!-- Se non ci sono sistemi REMOTE, mostra messaggio -->
+			{#if systems.every(s => s.currentDriver && !s.currentDriver.startsWith('AT'))}
+				<div class="text-center py-6">
+					<p class="text-lg text-muted-foreground">
+						Tutti i sistemi utilizzano driver INTRACK - nessuna scatola necessaria
+					</p>
+				</div>
+			{/if}
+		
+			<div class="mt-6 flex gap-5">
+				<Button.Root
+					class={button({ class: 'flex', color: 'secondary' })}
+					onclick={() => history.back()}
+				>
+					<ArrowLeft size={22} class="mr-1" /> {$_("common.back")}
+				</Button.Root>
+				<Button.Root
+					class={button({ class: 'flex' })}
+					disabled={systems.filter(s => s.currentDriver && s.currentDriver.startsWith('AT')).some(s => s.currentBox === null)}
+					onclick={() =>
+						pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState)}
+				>
+					{$_("invoice.next")} <ArrowRight size={22} class="ml-1" />
+				</Button.Root>
+			</div>
 	{:else if page.state.currentPage === 4}
 		<span class="text-5xl font-semibold">{$_("invoice.thankYou")}</span>
 
