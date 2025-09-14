@@ -149,6 +149,10 @@
 	}
 
 	function handleConfigurationSelected(config: Set<TemporaryObject> | null) {
+		if (renderer) {
+			renderer.resetConfigurationRotation();
+		}
+		
 		selectedConfiguration = config;
 		if (config === null) {
 			renderer?.setOpacity(1);

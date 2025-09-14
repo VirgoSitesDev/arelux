@@ -78,12 +78,11 @@
 
     function handleRotate() {
         if (!renderer || !selectedConfiguration) return;
-        
-        renderer.rotateConfiguration(selectedConfiguration, 90);
-        onMove();
-        onRotate();
-        
-        toast.success('Configurazione ruotata di 90°');
+            renderer.rotateConfiguration(selectedConfiguration);
+            
+            onMove();
+            
+            toast.success('Configurazione ruotata di 90°');
     }
 
     function centerInRoom() {
