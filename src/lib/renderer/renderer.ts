@@ -1307,8 +1307,6 @@ export class Renderer {
 	rotateConfiguration(configuration: Set<TemporaryObject>): void {
 		if (configuration.size === 0) return;
 
-		console.log('🔄 === ROTAZIONE STILE CAD ===');
-
 		const objects = Array.from(configuration).filter(obj => obj.mesh);
 		if (objects.length === 0) return;
 
@@ -1324,8 +1322,6 @@ export class Renderer {
 		
 		centerX /= objects.length;
 		centerZ /= objects.length;
-		
-		console.log('📍 Centro configurazione: (' + centerX.toFixed(2) + ', ' + centerZ.toFixed(2) + ')');
 
 		const pivot = new Group();
 		pivot.position.set(centerX, 0, centerZ);
@@ -1347,8 +1343,6 @@ export class Renderer {
 		});
 
 		pivot.rotateY(Math.PI / 2);
-		
-		console.log('🔄 Pivot ruotato di 90°');
 
 		objects.forEach(obj => {
 			if (obj.mesh) {
@@ -1362,14 +1356,10 @@ export class Renderer {
 				obj.mesh.quaternion.copy(newWorldQuaternion);
 				this.#scene.add(obj.mesh);
 				obj.setAngle((obj.getAngle() - 90) % 360);
-				
-				console.log('✅ Oggetto ' + obj.getCatalogEntry().code + ': nuova pos (' + newWorldPos.x.toFixed(1) + ', ' + newWorldPos.z.toFixed(1) + ')');
 			}
 		});
 
 		this.#scene.remove(pivot);
-		
-		console.log('✅ === ROTAZIONE CAD COMPLETATA ===');
 	}
 
 	resetConfigurationRotation(): void {
