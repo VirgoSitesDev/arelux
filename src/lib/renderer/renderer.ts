@@ -1361,6 +1361,7 @@ export class Renderer {
 				obj.mesh.position.copy(newWorldPos);
 				obj.mesh.quaternion.copy(newWorldQuaternion);
 				this.#scene.add(obj.mesh);
+				obj.setAngle((obj.getAngle() - 90) % 360);
 				
 				console.log('✅ Oggetto ' + obj.getCatalogEntry().code + ': nuova pos (' + newWorldPos.x.toFixed(1) + ', ' + newWorldPos.z.toFixed(1) + ')');
 			}

@@ -282,6 +282,10 @@ export class TemporaryObject {
 		}
 	}
 
+	getAngle(): number {
+		return this.#angle;
+	}
+
 	setAngle(angle: number) {
 		this.#angle = angle;
 	}
