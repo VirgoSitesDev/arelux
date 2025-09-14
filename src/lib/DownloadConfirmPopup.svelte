@@ -69,27 +69,31 @@
 		},
 	]);
 	const drivers = [
-		{ code: 'XNRS01DV', power: 150 },
-		{ code: 'XNRS02DV', power: 250 },
+		{ code: 'XNRS01DV', power: 100 },
+		{ code: 'XNRS02DV', power: 200 },
 		{ code: 'AT48.100', power: 100 },
-		{ code: 'AT48.150', power: 150 },
+		{ code: 'AT48.150', power: 200 },
 		{ code: 'AT48.200', power: 200 },
 		{ code: 'AT48.350', power: 350 },
 	];
+
 	const powerSupplies = ['XNRS01PCO.5', 'XNRS01PC2.5'];
 	const boxes = ['SMCKS01SDB', 'SMCKS02SDB', 'SMCKS02TDB', 'SMCKS03TDB'];
 
 	const availableDrivers = $derived.by(() => {
-		const currentSystem = page.data.system.toLowerCase();
-		
-		if (currentSystem === 'XFREE S' || currentSystem === 'xfree s') {
-			return drivers.filter((driver: { code: string; power: number }) => driver.code.startsWith('AT'));
-		} else if (currentSystem === 'XNET' || currentSystem === 'xnet') {
-			return drivers;
-		}
-		
-		return drivers;
-	});
+	const currentSystem = page.data.system.toLowerCase();
+	const requiredPower = getRequiredDriverPower(power);
+	
+	if (currentSystem === 'XFREE S' || currentSystem === 'xfree s') {
+		return drivers.filter((driver) => 
+			driver.code.startsWith('AT') && driver.power === requiredPower
+		);
+	} else if (currentSystem === 'XNET' || currentSystem === 'xnet') {
+		return drivers.filter((driver) => driver.power === requiredPower);
+	}
+
+	return drivers.filter((driver) => driver.power === requiredPower);
+});
 
 	const intrackDrivers = $derived(availableDrivers.filter((driver: { code: string; power: number }) => !driver.code.startsWith('AT')));
 	const remoteDrivers = $derived(availableDrivers.filter((driver: { code: string; power: number }) => driver.code.startsWith('AT')));
@@ -139,6 +143,13 @@
 		});
 	}
 
+	function getRequiredDriverPower(totalPower: number) {
+		if (totalPower <= 100) return 100;
+		if (totalPower <= 200) return 200;
+		if (totalPower <= 350) return 350;
+		return 350;
+	}
+
 	async function submit() {
 		if (email === '') return toast.error("Inserisci un'email valida");
 
@@ -164,7 +175,8 @@
 		if (currentDriver && currentDriver !== 'no-driver') {
 			const selectedDriverData = drivers.find((d) => d.code === currentDriver);
 			if (selectedDriverData) {
-				let quantity = Math.ceil(power / selectedDriverData.power);
+				const selectedDriver = drivers.find((d) => d.code === currentDriver);
+				let quantity = selectedDriver ? Math.ceil(power / selectedDriver.power) : 1;
 				quantity = Math.max(quantity, minDrivers);
 				
 				if (quantity > 0) {
