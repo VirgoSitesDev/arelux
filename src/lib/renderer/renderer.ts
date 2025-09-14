@@ -1303,53 +1303,45 @@ export class Renderer {
 	rotateConfiguration(configuration: Set<TemporaryObject>, angle: number = 90): void {
 		if (configuration.size === 0) return;
 
-		console.log('🔄 ROTAZIONE BLOCCO RIGIDO:', angle + '°');
-
-		// 1. Calcola il centro geometrico (semplice media delle posizioni)
-		const objects = Array.from(configuration).filter(obj => obj.mesh);
-		if (objects.length === 0) return;
-
-		let centerX = 0, centerZ = 0;
-		objects.forEach(obj => {
+		console.log('🔄 === INIZIO ROTAZIONE CONFIGURAZIONE ===');
+		let sumX = 0, sumZ = 0, count = 0;
+		
+		for (const obj of configuration) {
 			if (obj.mesh) {
-				centerX += obj.mesh.position.x;
-				centerZ += obj.mesh.position.z;
+				sumX += obj.mesh.position.x;
+				sumZ += obj.mesh.position.z;
+				count++;
 			}
-		});
-		centerX /= objects.length;
-		centerZ /= objects.length;
+		}
+		
+		if (count === 0) return;
 
-		console.log('🎯 Centro:', { x: centerX.toFixed(2), z: centerZ.toFixed(2) });
-
-		// 2. Converti angolo in radianti
+		const configurationCenter = new Vector3(sumX / count, 0, sumZ / count);
+		
+		console.log(`📍 Centro FISSO calcolato: x=${configurationCenter.x.toFixed(2)}, z=${configurationCenter.z.toFixed(2)}`);
 		const angleRad = (angle * Math.PI) / 180;
 
-		// 3. Ruota SOLO le posizioni, NON le rotazioni individuali
-		objects.forEach((obj, index) => {
-			if (obj.mesh) {
-				// Posizione originale
-				const origX = obj.mesh.position.x;
-				const origZ = obj.mesh.position.z;
+		for (const obj of configuration) {
+			if (!obj.mesh) continue;
 
-				// Calcola posizione relativa al centro
-				const relativeX = origX - centerX;
-				const relativeZ = origZ - centerZ;
+			const relativePos = obj.mesh.position.clone().sub(configurationCenter);
 
-				// Applica rotazione 2D
-				const newRelativeX = relativeX * Math.cos(angleRad) - relativeZ * Math.sin(angleRad);
-				const newRelativeZ = relativeX * Math.sin(angleRad) + relativeZ * Math.cos(angleRad);
+			const newX = relativePos.x * Math.cos(angleRad) - relativePos.z * Math.sin(angleRad);
+			const newZ = relativePos.x * Math.sin(angleRad) + relativePos.z * Math.cos(angleRad);
 
-				// Imposta la nuova posizione assoluta
-				obj.mesh.position.x = centerX + newRelativeX;
-				obj.mesh.position.z = centerZ + newRelativeZ;
-				// NON tocco obj.mesh.position.y (mantieni altezza)
-				// NON tocco obj.mesh.rotation (mantieni orientamento originale)
+			obj.mesh.position.set(
+				configurationCenter.x + newX,
+				obj.mesh.position.y,
+				configurationCenter.z + newZ
+			);
 
-				console.log(`📦 Oggetto ${index}: (${origX.toFixed(1)}, ${origZ.toFixed(1)}) → (${obj.mesh.position.x.toFixed(1)}, ${obj.mesh.position.z.toFixed(1)})`);
-			}
-		});
-
-		console.log('✅ ROTAZIONE BLOCCO RIGIDO COMPLETATA');
+			obj.mesh.rotateY(angleRad);
+			
+			console.log(`✅ Oggetto ${obj.getCatalogEntry().code}: 
+			Nuova pos: x=${obj.mesh.position.x.toFixed(2)}, z=${obj.mesh.position.z.toFixed(2)}`);
+		}
+		
+		console.log('✅ === ROTAZIONE COMPLETATA ===\n');
 	}
 
 	centerSystemInRoom(): void {
