@@ -243,14 +243,34 @@
 				if (quantity > 0) {
 					quantity = Math.max(quantity, minDrivers);
 					items.push({ code: system.currentDriver, quantity });
-					
-					if (system.currentPowerSupply && system.currentPowerSupply !== 'none') {
-						items.push({ code: system.currentPowerSupply, quantity });
-					}
-					
-					if (system.currentBox && system.currentBox !== 'none') {
-						items.push({ code: system.currentBox, quantity });
-					}
+				}
+			}
+			
+			// Aggiungi power supply separatamente se selezionato
+			if (system.currentPowerSupply && system.currentPowerSupply !== 'none') {
+				let driverQuantity = 0;
+				if (system.currentDriver && system.currentDriver !== 'none') {
+					driverQuantity = Math.max(
+						Math.ceil(system.totalPower / drivers.find((d) => d.code === system.currentDriver)!.power),
+						minDrivers
+					);
+				}
+				if (driverQuantity > 0) {
+					items.push({ code: system.currentPowerSupply, quantity: driverQuantity });
+				}
+			}
+			
+			// Aggiungi box separatamente se selezionato
+			if (system.currentBox && system.currentBox !== 'none') {
+				let driverQuantity = 0;
+				if (system.currentDriver && system.currentDriver !== 'none') {
+					driverQuantity = Math.max(
+						Math.ceil(system.totalPower / drivers.find((d) => d.code === system.currentDriver)!.power),
+						minDrivers
+					);
+				}
+				if (driverQuantity > 0) {
+					items.push({ code: system.currentBox, quantity: driverQuantity });
 				}
 			}
 		}
@@ -332,7 +352,7 @@
 
 		<div class="max-h-[70vh] overflow-y-auto">
 			{#each systems as system, systemIndex}
-				<div class="mb-8 border-b-2 border-gray-200 pb-6">
+				<div class="mb-8 border-b-2 border-gray-200 pb-6 mt-8">
 					<div class="mb-4">
 						<h3 class="text-2xl font-semibold">{system.id}</h3>
 						<span class="text-lg text-gray-600">
