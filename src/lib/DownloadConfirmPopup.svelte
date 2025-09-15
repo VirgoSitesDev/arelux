@@ -663,7 +663,7 @@
 				</Button.Root>
 			</div>
 		
-		{:else if page.state.currentPage === 3}
+			{:else if page.state.currentPage === 3}
 			<span class="mb-6 text-5xl font-semibold">{$_("invoice.box")}</span>
 		
 			<!-- Mostra solo i sistemi che NON hanno driver INTRACK e NON hanno scelto "none" -->
@@ -671,7 +671,7 @@
 				{@const originalSystemIndex = systems.indexOf(system)}
 				<div class="mb-6">
 					<h3 class="mb-3 text-xl font-medium">Sistema {originalSystemIndex + 1} - {system.currentDriver}</h3>
-					<div class="flex flex-col gap-3">
+					<div class="grid grid-cols-3 gap-3">
 						{#each boxes as box}
 							{@const url = page.data.supabase.storage
 								.from('arelux-italia')
@@ -717,7 +717,7 @@
 								</div>
 							</button>
 						{/each}
-
+		
 						<!-- Opzione "Nessuna scatola" -->
 						<button
 							class={cn(
