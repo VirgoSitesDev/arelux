@@ -205,7 +205,7 @@ export async function finishEdit(
 	}
 
 	lastAdded.set(obj.id);
-	goto(`/${page.data.tenant}/${page.data.system}`);
+	goto(`/${page.data.system}`);
 }
 
 export function getPowerBudget(

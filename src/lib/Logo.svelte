@@ -5,8 +5,8 @@
 	export let top: boolean = true;
 
 	const url = page.data.supabase.storage
-		.from(page.data.tenant)
-		.getPublicUrl(`${page.data.tenant}.png`).data.publicUrl;
+		.from('arelux-italia')
+		.getPublicUrl(`${'arelux-italia'}.png`).data.publicUrl;
 </script>
 
 <div

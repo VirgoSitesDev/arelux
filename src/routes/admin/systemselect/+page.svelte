@@ -13,7 +13,7 @@
 		<Button
 			onclick={async () => {
 				await selectSystem(system);
-				goto(`/${data.tenant}/admin`);
+				goto(`/admin`);
 			}}>{system}</Button
 		>
 	{/each}

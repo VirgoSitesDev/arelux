@@ -6,7 +6,6 @@
 	import { Button, Dialog, ScrollArea, Separator } from 'bits-ui';
 	import X from 'phosphor-svelte/lib/X';
 	import { onMount } from 'svelte';
-	import type { SavedObject } from '../../../app';
 	import { button, objects } from '$lib';
 	import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft';
 	import { fade } from 'svelte/transition';
@@ -19,7 +18,6 @@
 	import LightMover from './LightMover.svelte';
 	import SystemMover from './SystemMover.svelte';
 	import { Vector3 } from 'three';
-	import { _ } from 'svelte-i18n';
 
 	let { data } = $props();
 	let renderer = $state<Renderer | undefined>(undefined);
@@ -49,6 +47,8 @@
 	import { TemperatureManager } from '$lib/config/temperatureConfig';
 	import DbText from '$lib/i18n/DbText.svelte';
 	import { goto } from '$app/navigation';
+	import type { SavedObject } from '../../app';
+	import { _ } from 'svelte-i18n';
 
 	function setRef(node: HTMLElement, code: string) {
 		sidebarRefs.set(code, node);
@@ -88,7 +88,7 @@
 
 	function handleBackClick() {
 		if ($objects.length === 0) {
-			goto(`/${data.tenant}`);
+			goto(`/`);
 		} else {
 			showBackConfirmDialog = true;
 		}
@@ -96,7 +96,7 @@
 
 	function confirmBack() {
 		showBackConfirmDialog = false;
-		goto(`/${data.tenant}`);
+		goto(`/`);
 	}
 
 	function cancelBack() {
@@ -317,7 +317,7 @@
 					{#each $objects.filter((o) => !o.hidden) as item, index (item.object?.id || index + "-" + item.code)}
 						{@const baseCode = TemperatureManager.getBaseCodeForResources(item.code)}
 						{@const url = data.supabase.storage
-							.from(data.tenant)
+							.from('arelux-italia')
 							.getPublicUrl(`images/${baseCode}.webp`)}
 
 						<div
@@ -368,7 +368,7 @@
 			</ScrollArea.Scrollbar>
 		</ScrollArea.Root>
 
-		<Button.Root class={button({ class: 'mt-auto' })} href="/{data.tenant}/{data.system}/add">
+		<Button.Root class={button({ class: 'mt-auto' })} href="/{data.system}/add">
 			{$_('common.add')}
 		</Button.Root>
 

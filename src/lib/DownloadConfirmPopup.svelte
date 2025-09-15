@@ -277,14 +277,14 @@
 
 		const blob: string = await html2pdf()
 			.set({ margin: 6, html2canvas: { letterRendering: true, removeContainer: true } })
-			.from(await invoiceTemplate(page.data.supabase, page.data.tenant, email, items))
+			.from(await invoiceTemplate(page.data.supabase, 'arelux-italia', email, items))
 			.output('blob')
 			.then(blobToBase64);
 
 		const resp = await page.data.supabase.functions.invoke('send_email', {
 			body: {
 				to: email,
-				tenant: page.data.tenant,
+				tenant: 'arelux-italia',
 				file: blob.replace('data:application/pdf;base64,', ''),
 			},
 		});
@@ -379,7 +379,7 @@
 						{#if showIntrack}
 							{@const driver = intrackDrivers[0]}
 							{@const url = page.data.supabase.storage
-								.from(page.data.tenant)
+								.from('arelux-italia')
 								.getPublicUrl(`images/${driver.code}.webp`).data.publicUrl}
 							<div class="flex flex-col gap-3">
 								<button
@@ -430,7 +430,7 @@
 						{#if showRemote}
 							{@const driver = remoteDrivers[0]}
 							{@const url = page.data.supabase.storage
-								.from(page.data.tenant)
+								.from('arelux-italia')
 								.getPublicUrl(`images/${driver.code}.webp`).data.publicUrl}
 							<div class="flex flex-col gap-3">
 								<button
@@ -561,7 +561,7 @@
 					<div class="grid grid-cols-3 gap-3">
 						{#each powerSupplies as psu}
 							{@const url = page.data.supabase.storage
-								.from(page.data.tenant)
+								.from('arelux-italia')
 								.getPublicUrl(`images/${psu}.webp`).data.publicUrl}
 							<button
 								class={cn(
@@ -674,7 +674,7 @@
 					<div class="flex flex-col gap-3">
 						{#each boxes as box}
 							{@const url = page.data.supabase.storage
-								.from(page.data.tenant)
+								.from('arelux-italia')
 								.getPublicUrl(`images/${box}.webp`).data.publicUrl}
 							<button
 								class={cn(

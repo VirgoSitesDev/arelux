@@ -19,7 +19,7 @@
 		onUpdate: async ({ form: f }) => {
 			if (f.valid) {
 				try {
-					await createSystem(data.tenant, $formData.name, $formData.image);
+					await createSystem('arelux-italia', $formData.name, $formData.image);
 					toast.success('Created');
 				} catch {
 					toast.error('Something went wrong');
@@ -34,7 +34,7 @@
 		$formData.name = elem.displayName;
 
 		const url = data.supabase.storage
-			.from(data.tenant)
+			.from('arelux-italia')
 			.getPublicUrl(`system/${page.state.editing}.jpg`).data.publicUrl;
 		const blob = fetch(url).then((res) => res.blob());
 

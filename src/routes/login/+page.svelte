@@ -26,7 +26,7 @@
 			if (authError.code === 'invalid_credentials') toast.error('Invalid credentials');
 			else error(500, 'An error occurred');
 		} else {
-			goto(`/${data.tenant}/admin`);
+			goto(`/admin`);
 		}
 	}
 </script>

@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { Renderer } from '$lib/renderer/renderer';
 	import ConfigCurveShape from '$lib/config/ConfigCurveShape.svelte';
-	import { type Family, type FamilyEntry } from '../../../app.js';
+	import type { FamilyEntry } from '../../app.js';
 
 	let canvas: HTMLCanvasElement;
 	let { data } = $props();

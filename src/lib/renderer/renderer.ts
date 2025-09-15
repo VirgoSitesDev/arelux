@@ -643,7 +643,7 @@ class ObjectClickHandler {
 	}
 
 	private navigateToLightPage(lightFamily: Family, lightCode: string, profileId: string): void {
-		window.location.href = `/${this.renderer.tenant}/${lightFamily.system}/add?` + new URLSearchParams({
+			window.location.href = `/${lightFamily.system}/add?` + new URLSearchParams({
 			chosenFamily: lightFamily.code,
 			chosenItem: lightCode,
 			reference: JSON.stringify({ typ: 'line', id: profileId, junction: 0 }),
@@ -843,7 +843,7 @@ export class Renderer {
 		if (!RENDERER) {
 			RENDERER = new Renderer(
 				data.supabase,
-				data.tenant,
+				'arelux-italia',
 				data.families,
 				data.catalog,
 				canvas,

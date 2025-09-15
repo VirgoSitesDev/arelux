@@ -7,7 +7,7 @@
 	import { goto } from '$app/navigation';
 	import { deleteFamily, deleteObject } from '$lib/admin';
 	import { selectedSystem } from '$lib';
-	import type { CatalogEntry } from '../../../app';
+	import type { CatalogEntry } from '../../app';
 
 	let { data }: { data: PageData } = $props();
 
@@ -16,13 +16,13 @@
 
 <div class="flex flex-col items-center pb-6">
 	<h1 class="py-10 text-center text-4xl">
-		{data.tenant} | {$selectedSystem}
+		{'arelux-italia'} | {$selectedSystem}
 	</h1>
 	<div>
-		<Button class="w-min" href="/{data.tenant}/admin/add">Add new object</Button>
-		<Button class="w-min" href="/{data.tenant}/admin/familyadd">Add new family</Button>
-		<Button class="w-min" href="/{data.tenant}/admin/systemadd">Add new system</Button>
-		<Button class="w-min" href="/{data.tenant}/admin/systemselect">Select another system</Button>
+		<Button class="w-min" href="/admin/add">Add new object</Button>
+		<Button class="w-min" href="/admin/familyadd">Add new family</Button>
+		<Button class="w-min" href="/admin/systemadd">Add new system</Button>
+		<Button class="w-min" href="/admin/systemselect">Select another system</Button>
 	</div>
 </div>
 
@@ -49,7 +49,7 @@
 						variant="outline"
 						class="mr-6"
 						onclick={() => {
-							goto(`/${data.tenant}/admin/add`, {
+							goto(`/admin/add`, {
 								state: { editing: obj.code } as App.PageState,
 							});
 						}}
@@ -59,7 +59,7 @@
 					<Button 
 						variant="destructive" 
 						onclick={() => {
-							deleteObject(data.tenant, obj.code);
+							deleteObject('arelux-italia', obj.code);
 						}}
 					>
 						Delete
@@ -95,7 +95,7 @@
 						variant="outline"
 						class="mr-6"
 						onclick={() => {
-							goto(`/${data.tenant}/admin/familyadd`, {
+							goto(`/admin/familyadd`, {
 								state: { editing: obj.code } as App.PageState,
 							});
 						}}
@@ -105,7 +105,7 @@
 					<Button 
 						variant="destructive" 
 						onclick={() => {
-							deleteFamily(data.tenant, obj.code);
+							deleteFamily('arelux-italia', obj.code);
 						}}
 					>
 						Delete

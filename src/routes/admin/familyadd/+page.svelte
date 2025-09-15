@@ -20,7 +20,7 @@
 		onUpdate: async ({ form: f }) => {
 			if (f.valid) {
 				try {
-					await createFamily(data.tenant, $selectedSystem, $formData);
+					await createFamily('arelux-italia', $selectedSystem, $formData);
 					toast.success('Created');
 				} catch {
 					toast.error('Something went wrong');

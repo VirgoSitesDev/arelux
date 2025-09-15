@@ -121,7 +121,7 @@
 
 	async function onSubmit() {
 		const supabase = page.data.supabase;
-		const tenant = page.data.tenant;
+		const tenant = 'arelux-italia';
 		let image = (imageInput?.files ?? [])[0];
 
 		if (code === undefined || code.trim() === '')
