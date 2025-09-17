@@ -280,7 +280,7 @@
                 const point1World = rendererObj.mesh.localToWorld(new Vector3().copy(junct1));
                 const point2World = rendererObj.mesh.localToWorld(new Vector3().copy(junct2));
                 
-                const effectiveLength = profile.length || point1World.distanceTo(point2World) * 1000;
+                const effectiveLength = profile.length || -1;
                 
                 let isCurved = false;
                 let curveAngle = 0;
@@ -501,6 +501,11 @@
                 const offsetX = -Math.sin(angle) * textOffset;
                 const offsetY = Math.cos(angle) * textOffset;
                 
+				console.log(profile.code);
+				console.log(profile.length);
+				console.log(profile.curveRadius);
+				console.log(profile.curveAngle);
+				if ((profile.length < 0 || !profile.length) && (profile.curveRadius < 0 || !profile.curveRadius) && (profile.curveAngle < 0 || !profile.curveAngle)) continue ;
                 pdf.text(lengthText, midX + offsetX, midY + offsetY, { 
                     align: 'center',
                     angle: degrees > 90 || degrees < -90 ? degrees + 180 : degrees
@@ -548,7 +553,7 @@
             pdf.rect(tableStartX, rowY, tableWidth, rowHeight);
             pdf.setTextColor('#000000');
             pdf.text(code.length > 12 ? code.substring(0, 12) + '...' : code, tableStartX + 2, rowY + 3);
-            pdf.text(`${Math.round(totalLength)}mm`, tableStartX + 80, rowY + 3);
+            totalLength && totalLength != - 1 ? pdf.text(`${Math.round(totalLength)}mm`, tableStartX + 80, rowY + 3) : pdf.text(`Non definita`, tableStartX + 80, rowY + 3);
             pdf.text(quantity.toString(), tableStartX + 125, rowY + 3);
             
             rowY += rowHeight;
