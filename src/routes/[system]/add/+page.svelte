@@ -89,6 +89,11 @@
 
 	let enhancedCatalog = $derived(getEnhancedCatalog());
 
+	let modelLoading = $state(false);
+	let modelLoaded = $state(false);
+
+	const configControlsDisabled = $derived(modelLoading || (!modelLoaded && page.state.chosenItem !== undefined));
+
 	let selectedSubfamily: LightSubfamily | undefined = $state();
 	let selectedPower: { baseModel: string; power: number; sampleCode: string } | undefined = $state();
 	let showPowerPanel = $state(false);
@@ -243,10 +248,12 @@
 		if (temporary !== null) {
 			renderer?.removeObject(temporary);
 			temporary = null;
+			modelLoaded = false;
 		}
 
 		if (page.state.chosenFamily !== undefined && page.state.chosenItem !== undefined) {
 			renderer?.setOpacity(0.2);
+			modelLoading = true;
 
 			renderer?.addObject(page.state.chosenItem).then((o) => {
 				if (junctionId !== undefined) o.markJunction(junctionId);
@@ -281,9 +288,17 @@
 				}
 
 				temporary = o;
+				modelLoading = false;
+				modelLoaded = true;
+			}).catch((error) => {
+				console.error('Errore durante il caricamento del modello:', error);
+				modelLoading = false;
+				modelLoaded = false;
 			});
 		} else {
 			renderer?.setOpacity(1);
+			modelLoading = false;
+			modelLoaded = false;
 		}
 	});
 	
@@ -765,173 +780,167 @@
 			{@const family = data.families[page.state.chosenFamily]}
 
 			{#if hasTemperatureVariants(family, page.state.chosenItem)}
-				{@const availableTemperatures = getAvailableTemperatures(family, page.state.chosenItem)}
-				{@const currentTemp = getCurrentTemperature(page.state.chosenItem)}
-				
-				<div class="flex items-center rounded bg-box px-5 py-3">
-					<span class="mr-4 font-medium">{$_("config.temperature")}:</span>
-					<div class="flex rounded border-2 border-gray-300 overflow-hidden">
-						{#each availableTemperatures as temperature}
-							<button
-								class="px-6 py-2 font-medium transition-all {currentTemp?.suffix === temperature.suffix 
-									? 'bg-yellow-400 text-black' 
-									: 'bg-white text-gray-700 hover:bg-gray-100'}"
-								onclick={() => {
-									const newCode = switchToTemperature(page.state.chosenItem, temperature);
-									const newItem = findItemByCode(family, newCode);
-									
-									if (newItem) {
-										replaceState('', {
-											chosenItem: newCode,
-											chosenFamily: page.state.chosenFamily,
-											reference: page.state.reference,
-											length: page.state.length,
-											isCustomLength: page.state.isCustomLength,
-											led: page.state.led,
-										});
-									}
-								}}
-							>
-								<div class="text-center">
-									<div class="font-bold">{temperature.label}</div>
-								</div>
-							</button>
-						{/each}
-					</div>
-				</div>
-			{/if}
-
-			{@const isProfilo = family.group.toLowerCase().includes('profil') || 
-							  family.displayName.toLowerCase().includes('profil') ||
-							  (family.needsLengthConfig && !family.isLed)}
-
-			{#if isProfilo}
-				{@const currentItem = page.state.chosenItem ? family.items.find(item => item.code === page.state.chosenItem) : null}
-				{@const isCurrentItemCurved = currentItem && currentItem.deg > 0}
-				
-				{#if (family.system === "XNet" || family.system === "XFree S") && !configShape?.angle && !isCurrentItemCurved}
-					<ConfigLength
-						{family}
-						allowCustomLength={family.system !== "XFree S"}
-						onsubmit={(objectCode, length, isCustom) => {
-							configLength = length;
-							
-							replaceState('', {
-								chosenItem: objectCode,
-								chosenFamily: page.state.chosenFamily,
-								reference: page.state.reference,
-								length: length,
-								isCustomLength: isCustom
-							});
-						}}
-					/>
-				{:else if family.needsLengthConfig && !family.arbitraryLength && !configShape?.angle && !isCurrentItemCurved}
-					<ConfigLength
-						{family}
-						onsubmit={(objectCode, length, isCustom) => {
-							configLength = length;
-							
-							replaceState('', {
-								chosenItem: objectCode,
-								chosenFamily: page.state.chosenFamily,
-								reference: page.state.reference,
-								length: length,
-								isCustomLength: isCustom
-							});
-						}}
-					/>
-				{:else if family.needsLengthConfig && family.arbitraryLength && !configShape?.angle && !isCurrentItemCurved}
-					<ConfigLengthArbitrary
-						value={arbitraryLength}
-						onsubmit={(length) => {
-							replaceState('', {
-								chosenItem: page.state.chosenItem,
-								chosenFamily: page.state.chosenFamily,
-								reference: page.state.reference,
-								length,
-							});
-						}}
-					/>
-				{/if}
-			{/if}
+			{@const availableTemperatures = getAvailableTemperatures(family, page.state.chosenItem)}
+			{@const currentTemp = getCurrentTemperature(page.state.chosenItem)}
 			
-			{#if family.needsCurveConfig}
-				<ConfigCurveShape
-					{family}
-					onSubmit={(familyEntry, chosenPoint) => {
-						configShape = chosenPoint;
-						replaceState('', {
-							chosenItem: familyEntry.code,
-							chosenFamily: page.state.chosenFamily,
-							reference: page.state.reference,
-						});
-					}}
-				/>
-			{/if}
-
-			{#if family.needsColorConfig}
-				<ConfigColor
-					items={family.items.map((i) => i.color)}
-					disabled={(family.needsCurveConfig && configShape === undefined) ||
-					(family.needsLengthConfig && configLength === undefined)}
-					onsubmit={(color) => {
-						const { angle, radius } = configShape ?? { angle: -1, radius: -1 };
-						const { needsCurveConfig, needsLengthConfig } = family;
-						const currentTemp = getCurrentTemperature(page.state.chosenItem);
-						
-						const items = family.items
-							.filter((i) => (needsCurveConfig ? i.deg === angle && i.radius === radius : true))
-							.filter((i) => (needsLengthConfig ? i.len === configLength : true))
-							.filter((i) => i.color === color)
-							.filter((i) => {
-								if (currentTemp) {
-									const itemTemp = getCurrentTemperature(i.code);
-									return itemTemp?.suffix === currentTemp.suffix;
+			<div class="flex items-center rounded bg-box px-5 py-3 {configControlsDisabled ? 'opacity-50 pointer-events-none' : ''}">
+				<span class="mr-4 font-medium">{$_("config.temperature")}:</span>
+				<div class="flex rounded border-2 border-gray-300 overflow-hidden">
+					{#each availableTemperatures as temperature}
+						<button
+							class="px-6 py-2 font-medium transition-all {currentTemp?.suffix === temperature.suffix 
+								? 'bg-yellow-400 text-black' 
+								: 'bg-white text-gray-700 hover:bg-gray-100'}"
+							disabled={configControlsDisabled}
+							onclick={() => {
+								if (configControlsDisabled) return;
+								
+								const newCode = switchToTemperature(page.state.chosenItem, temperature);
+								const newItem = findItemByCode(family, newCode);
+								
+								if (newItem) {
+									replaceState('', {
+										chosenItem: newCode,
+										chosenFamily: page.state.chosenFamily,
+										reference: page.state.reference,
+										length: page.state.length,
+										isCustomLength: page.state.isCustomLength,
+										led: page.state.led,
+									});
 								}
-								return true;
-							});
-							
-						if (items.length === 0) {
-							console.error("Nessun item trovato con colore:", color, "e temperatura:", currentTemp?.suffix);
-							throw new Error("what?");
-						}
+							}}
+						>
+							<div class="text-center">
+								<div class="font-bold">{temperature.label}</div>
+							</div>
+						</button>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
+		{@const isProfilo = family.group.toLowerCase().includes('profil') || 
+							family.displayName.toLowerCase().includes('profil') ||
+							(family.needsLengthConfig && !family.isLed)}
+
+		{#if isProfilo}
+			{@const currentItem = page.state.chosenItem ? family.items.find(item => item.code === page.state.chosenItem) : null}
+			{@const isCurrentItemCurved = currentItem && currentItem.deg > 0}
+			
+			{#if (family.system === "XNet" || family.system === "XFree S") && !configShape?.angle && !isCurrentItemCurved}
+				<ConfigLength
+					{family}
+					allowCustomLength={family.system !== "XFree S"}
+					disabled={configControlsDisabled}
+					onsubmit={(objectCode, length, isCustom) => {
+						if (configControlsDisabled) return;
+						
+						console.log('🔍 ConfigLength onsubmit:', { objectCode, length, isCustom });
+						configLength = length;
 						
 						replaceState('', {
-							chosenItem: items[0].code,
+							chosenItem: objectCode,
 							chosenFamily: page.state.chosenFamily,
 							reference: page.state.reference,
+							length: length,
+							isCustomLength: isCustom
 						});
 					}}
 				/>
-			{/if}
-
-			{#if family.needsLedConfig}
-				{@const chosenItem = family.items.find((i) => i.code === page.state.chosenItem)}
-				<ConfigLed
-					family={data.families[family.ledFamily ?? '']}
-					length={family.arbitraryLength ? page.state.length : chosenItem?.len}
-					tenant={data.tenant}
-					supabase={data.supabase}
-					onsubmit={(led, length) => {
-						replaceState('', {
-							chosenItem: page.state.chosenItem,
-							chosenFamily: page.state.chosenFamily,
-							reference: page.state.reference,
-							led,
-							length,
-						});
-						arbitraryLength = length;
-					}}
-				/>
-			{/if}
-
-			{#if enhancedCatalog[page.state.chosenItem]?.juncts?.length > 1 && $objects.length > 0}
-				<button class={button({ class: 'flex items-center' })} onclick={() => temporary?.rotate()}>
-					<ArrowsClockwise class="mr-1 size-7 text-foreground" />
-					{$_("config.rotate")}
-				</button>
 			{/if}
 		{/if}
+		
+		{#if family.needsCurveConfig}
+			<ConfigCurveShape
+				{family}
+				onSubmit={(familyEntry, chosenPoint) => {
+					configShape = chosenPoint;
+					replaceState('', {
+						chosenItem: familyEntry.code,
+						chosenFamily: page.state.chosenFamily,
+						reference: page.state.reference,
+					});
+				}}
+			/>
+		{/if}
+
+	{#if family.needsColorConfig}
+		<ConfigColor
+			items={family.items.map((i) => i.color)}
+			disabled={configControlsDisabled || (family.needsCurveConfig && configShape === undefined) ||
+			(family.needsLengthConfig && configLength === undefined)}
+			onsubmit={(color) => {
+				if (configControlsDisabled) return;
+				
+				const { angle, radius } = configShape ?? { angle: -1, radius: -1 };
+				const { needsCurveConfig, needsLengthConfig } = family;
+				
+				// Ottieni la temperatura corrente
+				const currentTemp = getCurrentTemperature(page.state.chosenItem);
+				
+				const items = family.items
+					.filter((i) => (needsCurveConfig ? i.deg === angle && i.radius === radius : true))
+					.filter((i) => (needsLengthConfig ? i.len === configLength : true))
+					.filter((i) => i.color === color)
+					.filter((i) => {
+						// Filtra anche per temperatura se disponibile
+						if (currentTemp) {
+							const itemTemp = getCurrentTemperature(i.code);
+							return itemTemp?.suffix === currentTemp.suffix;
+						}
+						return true;
+					});
+					
+				if (items.length === 0) {
+					console.error("Nessun item trovato con colore:", color, "e temperatura:", currentTemp?.suffix);
+					throw new Error("what?");
+				}
+				
+				replaceState('', {
+					chosenItem: items[0].code,
+					chosenFamily: page.state.chosenFamily,
+					reference: page.state.reference,
+				});
+			}}
+		/>
+	{/if}
+
+	{#if modelLoading}
+		<div class="absolute bottom-20 left-80 right-80 flex justify-center z-20">
+			<div class="flex items-center gap-3 rounded bg-box p-4 shadow-lg border border-gray-200">
+				<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+				<span class="text-sm font-medium">Caricamento modello...</span>
+			</div>
+		</div>
+	{/if}
+
+		{#if family.needsLedConfig}
+			{@const chosenItem = family.items.find((i) => i.code === page.state.chosenItem)}
+			<ConfigLed
+				family={data.families[family.ledFamily ?? '']}
+				length={family.arbitraryLength ? page.state.length : chosenItem?.len}
+				tenant={data.tenant}
+				supabase={data.supabase}
+				onsubmit={(led, length) => {
+					replaceState('', {
+						chosenItem: page.state.chosenItem,
+						chosenFamily: page.state.chosenFamily,
+						reference: page.state.reference,
+						led,
+						length,
+					});
+					arbitraryLength = length;
+				}}
+			/>
+		{/if}
+
+		{#if enhancedCatalog[page.state.chosenItem]?.juncts?.length > 1 && $objects.length > 0}
+			<button class={button({ class: 'flex items-center' })} onclick={() => temporary?.rotate()}>
+				<ArrowsClockwise class="mr-1 size-7 text-foreground" />
+				{$_("config.rotate")}
+			</button>
+		{/if}
+	{/if}
 	</div>
 </main>
 <canvas class="absolute inset-0 -z-10 h-dvh w-full" bind:this={canvas}></canvas>

@@ -1,3 +1,4 @@
+<!-- src/lib/config/ConfigLength.svelte -->
 <script lang="ts">
     import { cn } from '$shad/utils';
     import _ from 'lodash';
@@ -9,9 +10,16 @@
         value?: string;
         onsubmit?: (value: string, length: number, isCustom?: boolean) => any;
         allowCustomLength?: boolean;
+        disabled?: boolean; // NUOVO: Aggiunto supporto per disabled
     };
 
-    let { family, value = $bindable(), onsubmit, allowCustomLength = true }: Props = $props();
+    let { 
+        family, 
+        value = $bindable(), 
+        onsubmit, 
+        allowCustomLength = true,
+        disabled = false // NUOVO
+    }: Props = $props();
 
     let valueInvalid = $state(false);
     let isCustomLength = $state(false);
@@ -38,6 +46,8 @@
     });
 
     function selectLength(code: string, len: number) {
+        if (disabled) return; // NUOVO: Previeni azioni se disabilitato
+        
         value = code;
         valueLen = len;
         isCustomLength = false;
@@ -48,7 +58,11 @@
     }
 
     function handleSliderChange() {
+        if (disabled) return; // NUOVO: Previeni azioni se disabilitato
+        
+        // Se non sono permesse lunghezze personalizzate (XFREES), forza la selezione solo sui pallini
         if (!allowCustomLength) {
+            // Trova la lunghezza standard più vicina
             const closestItem = items.reduce((prev, curr) => 
                 Math.abs(curr.len - valueLen) < Math.abs(prev.len - valueLen) ? curr : prev
             );
@@ -62,6 +76,7 @@
             return;
         }
 
+        // Comportamento originale per sistemi che permettono lunghezze personalizzate (XNET)
         hasError = false;
         errorMessage = '';
         valueInvalid = false;
@@ -83,6 +98,9 @@
     }
 
     function handleCustomLength() {
+        if (disabled) return; // NUOVO: Previeni azioni se disabilitato
+        
+        // Se non sono permesse lunghezze personalizzate, non fare nulla
         if (!allowCustomLength) return;
 
         hasError = false;
@@ -134,7 +152,7 @@
     }
 </script>
 
-<div class="flex flex-col rounded-md bg-box px-6 py-1">
+<div class="flex flex-col rounded-md bg-box px-6 py-1 {disabled ? 'opacity-50 pointer-events-none' : ''}">
     <div class="flex flex-col gap-2">
         <!-- Slider giallo con pallini cliccabili -->
         <div class="relative flex w-full items-center justify-center">
@@ -144,8 +162,9 @@
                 min="10"
                 max="2500"
                 step="10"
-                class="slider-yellow w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                class="slider-yellow w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer {disabled ? 'cursor-not-allowed opacity-50' : ''}"
                 oninput={handleSliderChange}
+                disabled={disabled}
             />
             
             <!-- Pallini cliccabili per le lunghezze standard -->
@@ -155,7 +174,8 @@
                         {@const position = ((len - 10) / (2500 - 10)) * 100}
                         <button
                             class={cn(
-                                'absolute w-3 h-3 rounded-full transform -translate-x-1.5 cursor-pointer transition-all hover:scale-110 z-10',
+                                'absolute w-3 h-3 rounded-full transform -translate-x-1.5 transition-all z-10',
+                                disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:scale-110',
                                 valueLen === len && !isCustomLength 
                                     ? 'bg-gray-600 scale-125' 
                                     : 'bg-gray-400'
@@ -164,6 +184,7 @@
                             onclick={() => selectLength(code, len)}
                             title="{len}mm (standard)"
                             aria-label={`${len}mm`}
+                            disabled={disabled}
                         ></button>
                     {/each}
                 </div>
@@ -183,6 +204,7 @@
                         'font-input w-16 appearance-none rounded-md border-2 border-black/40 bg-transparent text-center',
                         (valueInvalid || hasError) && 'border-red-500',
                         isCustomLength && !hasError && 'border-primary',
+                        disabled && 'cursor-not-allowed opacity-50'
                     )}
                     onblur={() => handleCustomLength()}
                     onkeyup={(e) => {
@@ -195,6 +217,7 @@
                             valueInvalid = false;
                         }
                     }}
+                    disabled={disabled}
                 />
                 <span class="ml-0.5">mm</span>
             </div>
@@ -269,5 +292,15 @@
         background: #f59e0b;
         transform: scale(1.1);
         transition: all 0.2s ease;
+    }
+
+    .slider-yellow:disabled::-webkit-slider-thumb {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .slider-yellow:disabled::-moz-range-thumb {
+        cursor: not-allowed;
+        opacity: 0.5;
     }
 </style>
