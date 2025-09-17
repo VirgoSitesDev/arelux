@@ -337,7 +337,7 @@
 
 					<DropdownMenu.Content
 						transition={flyAndScale}
-						class="z-20 flex flex-col gap-3 rounded bg-box3 p-6"
+						class="z-20 flex flex-col gap-3 rounded bg-box3 p-6 w-auto min-w-max max-w-sm"
 					>
 						{#each data.modes as thisMode}
 							<Button.Root on:click={() => {
@@ -348,8 +348,8 @@
 								renderer?.handles.setVisible(false);
 								renderer?.setOpacity(1);
 							}}>
-								<DropdownMenu.Item class="flex w-36 items-center ">
-									<span class="overflow-x-hidden text-ellipsis text-nowrap">
+								<DropdownMenu.Item class="flex items-center whitespace-nowrap">
+									<span class="text-ellipsis overflow-hidden">
 										<DbText text={thisMode} />
 									</span>
 								</DropdownMenu.Item>
