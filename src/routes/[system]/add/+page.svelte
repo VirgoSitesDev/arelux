@@ -22,12 +22,12 @@
 	import type { RendererObject } from '$lib/renderer/objects';
 	import ConfigLengthSelector from '$lib/config/ConfigLengthSelector.svelte';
 	import { Vector3 } from 'three';
+	import type { Family } from '../../../app';
 	import { TemperatureManager, type TemperatureConfig } from '$lib/config/temperatureConfig';
 	import { extractSubfamilies, getSubfamilyName, hasLightSubfamilies, sortSubfamilies, type LightSubfamily } from '$lib/lightSubfamilies';
 	import { _ } from 'svelte-i18n';
 	import DbText from '$lib/i18n/DbText.svelte';
 	import { object } from 'zod';
-	import type { Family } from '../../../app';
 
 	function hasTemperatureVariants(family: Family, itemCode?: string): boolean {
 		const enhancedFamily = TemperatureManager.getEnhancedFamily(family, enhancedCatalog);

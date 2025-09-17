@@ -184,6 +184,7 @@ async function loadFamilies(
 				desc1: element.desc1,
 				desc2: element.desc2,
 				total_length,
+				sottofamiglia: element.sottofamiglia,
 			});
 		}
 	}

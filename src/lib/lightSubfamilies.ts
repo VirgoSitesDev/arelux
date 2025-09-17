@@ -1,5 +1,4 @@
-import type { CatalogEntry, Family } from "../app";
-
+import type { Family, FamilyEntry, CatalogEntry } from '../app';
 
 export interface LightSubfamily {
   code: string;

@@ -49,7 +49,7 @@ export type Database = {
           needslengthconfig: boolean
           needstemperatureconfig: boolean
           system: string
-          tenant: string
+          tenant: string // ⚠️ MANTIENI il campo ma sarà sempre 'arelux-italia'
           visible: boolean
         }
         Insert: {
@@ -66,8 +66,9 @@ export type Database = {
           needslengthconfig: boolean
           needstemperatureconfig: boolean
           system: string
-          tenant: string
+          tenant?: string // ⚠️ Opzionale nell'insert, verrà hardcoded
           visible: boolean
+          sottofamiglia?: string
         }
         Update: {
           arbitrarylength?: boolean
@@ -83,8 +84,9 @@ export type Database = {
           needslengthconfig?: boolean
           needstemperatureconfig?: boolean
           system?: string
-          tenant?: string
+          tenant?: string // ⚠️ Opzionale nell'update
           visible?: boolean
+          sottofamiglia?: string
         }
         Relationships: [
           {
@@ -114,7 +116,7 @@ export type Database = {
           objectcode: string
           radius: number | null
           temperature: number | null
-          tenant: string
+          tenant: string // ⚠️ MANTIENI
           sottofamiglia: string
         }
         Insert: {
@@ -127,7 +129,7 @@ export type Database = {
           objectcode: string
           radius?: number | null
           temperature?: number | null
-          tenant: string
+          tenant?: string // ⚠️ Opzionale, verrà hardcoded
         }
         Update: {
           angle?: number | null
@@ -209,7 +211,7 @@ export type Database = {
         Insert: {
           group_code: string
           object_code: string
-          tenant: string
+          tenant?: string // ⚠️ Opzionale
         }
         Update: {
           group_code?: string
@@ -257,7 +259,7 @@ export type Database = {
           junction1_id: number
           junction2_id: number
           object_code: string
-          tenant: string
+          tenant?: string // ⚠️ Opzionale
         }
         Update: {
           groups?: string
@@ -407,7 +409,7 @@ export type Database = {
           groups: string
           junction_id: number
           object_code: string
-          tenant: string
+          tenant?: string // ⚠️ Opzionale
         }
         Update: {
           groups?: string
@@ -501,7 +503,7 @@ export type Database = {
           power: number
           price_cents: number
           system: string
-          tenant: string
+          tenant?: string // ⚠️ Opzionale
         }
         Update: {
           code?: string
@@ -527,7 +529,7 @@ export type Database = {
         }
         Insert: {
           code: string
-          tenant: string
+          tenant?: string // ⚠️ Opzionale
         }
         Update: {
           code?: string
@@ -583,6 +585,15 @@ export type Database = {
 }
 
 type PublicSchema = Database[Extract<keyof Database, "public">]
+
+// ⚠️ AGGIUNGI queste utility functions per hardcodare il tenant
+export const TENANT = 'arelux-italia' as const;
+
+// Helper per insert senza dover specificare tenant
+export type TablesInsertWithTenant<T extends keyof PublicSchema["Tables"]> = 
+  Omit<PublicSchema["Tables"][T]["Insert"], "tenant"> & {
+    tenant?: typeof TENANT;
+  };
 
 export type Tables<
   PublicTableNameOrOptions extends
@@ -678,4 +689,3 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
-
