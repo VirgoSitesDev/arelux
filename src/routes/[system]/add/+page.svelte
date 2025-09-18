@@ -319,7 +319,7 @@
 	{#if renderer !== undefined}
 		{@const rend = renderer}
 		<div class="row-span-3 flex max-h-full flex-col gap-6">
-			<a href="/{data.tenant}/{data.system}" class="inline-flex">
+			<a href="/{data.system}" class="inline-flex">
 				<ArrowLeft class="translate-y-1" />
 				{$_("common.back")}
 			</a>
@@ -608,7 +608,7 @@
 								desc2: item.desc2,
 								subobjects: [],
 							});
-							goto(`/${data.tenant}/${data.system}`);
+							goto(`/${data.system}`);
 						}
 					}}
 				>
