@@ -244,7 +244,7 @@ export class TemporaryObject {
 
 			if (isVerticalProfile) {
 				angleZ = lineDirection.y > 0 ? Math.PI / 2 : -Math.PI / 2;
-				angleY = 3 * Math.PI / 2;
+				angleY = 0;
 
 				if (Math.abs(lineDirection.x) > 0.01 || Math.abs(lineDirection.z) > 0.01) {
 					angleY += Math.atan2(lineDirection.x, lineDirection.z);
@@ -577,7 +577,7 @@ export class TemporaryObject {
 			
 			if (isVerticalProfile) {
 				angleZ = lineDirection.y > 0 ? Math.PI / 2 : -Math.PI / 2;
-				angleY = 3 * Math.PI / 2;
+				angleY = 0;
 		
 				if (Math.abs(lineDirection.x) > 0.01 || Math.abs(lineDirection.z) > 0.01) {
 					angleY += Math.atan2(lineDirection.x, lineDirection.z);
