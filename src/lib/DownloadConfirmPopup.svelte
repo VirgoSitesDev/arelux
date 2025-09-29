@@ -125,18 +125,31 @@
 
 	const availableDrivers = $derived.by(() => {
 		const currentSystem = page.data.system.toLowerCase().replace(' ', '_');
-		
+		console.log(`SYSTEM DEBUG - Current system: ${currentSystem}, Original: ${page.data.system}`);
+
 		if (currentSystem === 'xfree_s' || currentSystem === 'xfrees') {
-			return drivers.filter((driver) => driver.code.startsWith('AT'));
+			const filtered = drivers.filter((driver) => driver.code.startsWith('AT'));
+			console.log('SYSTEM DEBUG - XFREE system, available drivers:', filtered);
+			return filtered;
 		} else if (currentSystem === 'xnet') {
+			console.log('SYSTEM DEBUG - XNET system, all drivers available:', drivers);
 			return drivers;
 		}
-		
+
+		console.log('SYSTEM DEBUG - Default case, all drivers available:', drivers);
 		return drivers;
 	});
 
-	const intrackDrivers = $derived(availableDrivers.filter((driver) => !driver.code.startsWith('AT')));
-	const remoteDrivers = $derived(availableDrivers.filter((driver) => driver.code.startsWith('AT')));
+	const intrackDrivers = $derived.by(() => {
+		const filtered = availableDrivers.filter((driver) => !driver.code.startsWith('AT'));
+		console.log('DRIVERS DEBUG - INTRACK drivers:', filtered);
+		return filtered;
+	});
+	const remoteDrivers = $derived.by(() => {
+		const filtered = availableDrivers.filter((driver) => driver.code.startsWith('AT'));
+		console.log('DRIVERS DEBUG - REMOTE drivers:', filtered);
+		return filtered;
+	});
 
 	const showIntrack = $derived(intrackDrivers.length > 0);
 	const showRemote = $derived(remoteDrivers.length > 0);
@@ -156,10 +169,14 @@
 			
 			systemObjects.forEach(o => visitedObjects.add(o.object!.id));
 			
+			const systemPower = getPowerBudget(page.data.catalog, systemObjects);
+			const systemId = `Sistema ${systemGroups.length + 1}`;
+			console.log(`SYSTEM POWER DEBUG - ${systemId}: ${systemPower}W (${systemObjects.length} objects)`);
+
 			systemGroups.push({
-				id: `Sistema ${systemGroups.length + 1}`,
+				id: systemId,
 				objects: systemObjects,
-				totalPower: getPowerBudget(page.data.catalog, systemObjects),
+				totalPower: systemPower,
 				currentDriver: null,
 				currentPowerSupply: null,
 				currentBox: null
@@ -239,7 +256,7 @@
 
 		for (const system of systems) {
 			if (system.currentDriver && system.currentDriver !== 'none') {
-				let quantity = Math.ceil(system.totalPower / drivers.find((d) => d.code === system.currentDriver)!.power);
+				let quantity = Math.ceil(Math.abs(system.totalPower) / drivers.find((d) => d.code === system.currentDriver)!.power);
 				if (quantity > 0) {
 					quantity = Math.max(quantity, minDrivers);
 					items.push({ code: system.currentDriver, quantity });
@@ -251,7 +268,7 @@
 				let driverQuantity = 0;
 				if (system.currentDriver && system.currentDriver !== 'none') {
 					driverQuantity = Math.max(
-						Math.ceil(system.totalPower / drivers.find((d) => d.code === system.currentDriver)!.power),
+						Math.ceil(Math.abs(system.totalPower) / drivers.find((d) => d.code === system.currentDriver)!.power),
 						minDrivers
 					);
 				}
@@ -265,7 +282,7 @@
 				let driverQuantity = 0;
 				if (system.currentDriver && system.currentDriver !== 'none') {
 					driverQuantity = Math.max(
-						Math.ceil(system.totalPower / drivers.find((d) => d.code === system.currentDriver)!.power),
+						Math.ceil(Math.abs(system.totalPower) / drivers.find((d) => d.code === system.currentDriver)!.power),
 						minDrivers
 					);
 				}
@@ -377,7 +394,18 @@
 						{/if}
 						
 						{#if showIntrack}
-							{@const driver = intrackDrivers[0]}
+							{@const suitableIntrackDrivers = intrackDrivers.filter(driver => {
+								const systemPowerAbs = Math.abs(system.totalPower);
+								const isSuitable = driver.power >= systemPowerAbs;
+								console.log(`INTRACK DEBUG - System: ${system.id}, Power: ${system.totalPower}W (abs: ${systemPowerAbs}W), Driver: ${driver.code} (${driver.power}W), Suitable: ${isSuitable}`);
+								return isSuitable;
+							})}
+							{#if suitableIntrackDrivers.length > 0}
+							{@const driver = suitableIntrackDrivers.reduce((min, current) => {
+								console.log(`INTRACK SELECTION - Comparing ${current.code} (${current.power}W) vs ${min.code} (${min.power}W)`);
+								return current.power < min.power ? current : min;
+							})}
+							{console.log(`INTRACK FINAL - Selected: ${driver.code} (${driver.power}W) for system ${system.id} (${system.totalPower}W)`)}
 							{@const url = page.data.supabase.storage
 								.from('arelux-italia')
 								.getPublicUrl(`images/${driver.code}.webp`).data.publicUrl}
@@ -397,12 +425,12 @@
 											{driver.code}
 											({driver.power}W)
 										</span>
-				
+
 										<span class="text-sm text-muted-foreground">
-											{$_("config.quantity")}: {Math.max(Math.ceil(system.totalPower / driver.power), minDrivers)}
+											{$_("config.quantity")}: {Math.max(Math.ceil(Math.abs(system.totalPower) / driver.power), minDrivers)}
 										</span>
 									</div>
-				
+
 									<div class="relative ml-auto">
 										<img
 											src={url}
@@ -415,7 +443,7 @@
 												loaded.has(url) || 'opacity-0',
 											)}
 										/>
-				
+
 										<div
 											class={cn(
 												'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
@@ -425,10 +453,22 @@
 									</div>
 								</button>
 							</div>
+							{/if}
 						{/if}
-						
+
 						{#if showRemote}
-							{@const driver = remoteDrivers[0]}
+							{@const suitableRemoteDrivers = remoteDrivers.filter(driver => {
+								const systemPowerAbs = Math.abs(system.totalPower);
+								const isSuitable = driver.power >= systemPowerAbs;
+								console.log(`REMOTE DEBUG - System: ${system.id}, Power: ${system.totalPower}W (abs: ${systemPowerAbs}W), Driver: ${driver.code} (${driver.power}W), Suitable: ${isSuitable}`);
+								return isSuitable;
+							})}
+							{#if suitableRemoteDrivers.length > 0}
+							{@const driver = suitableRemoteDrivers.reduce((min, current) => {
+								console.log(`REMOTE SELECTION - Comparing ${current.code} (${current.power}W) vs ${min.code} (${min.power}W)`);
+								return current.power < min.power ? current : min;
+							})}
+							{console.log(`REMOTE FINAL - Selected: ${driver.code} (${driver.power}W) for system ${system.id} (${system.totalPower}W)`)}
 							{@const url = page.data.supabase.storage
 								.from('arelux-italia')
 								.getPublicUrl(`images/${driver.code}.webp`).data.publicUrl}
@@ -448,12 +488,12 @@
 											{driver.code}
 											({driver.power}W)
 										</span>
-				
+
 										<span class="text-sm text-muted-foreground">
-											{$_("config.quantity")}: {Math.max(Math.ceil(system.totalPower / driver.power), minDrivers)}
+											{$_("config.quantity")}: {Math.max(Math.ceil(Math.abs(system.totalPower) / driver.power), minDrivers)}
 										</span>
 									</div>
-				
+
 									<div class="relative ml-auto">
 										<img
 											src={url}
@@ -466,7 +506,7 @@
 												loaded.has(url) || 'opacity-0',
 											)}
 										/>
-				
+
 										<div
 											class={cn(
 												'absolute right-0 top-0 z-10 h-[125px] w-[125px] animate-pulse rounded-full bg-gray-400',
@@ -476,6 +516,7 @@
 									</div>
 								</button>
 							</div>
+							{/if}
 						{/if}
 
 						<!-- Opzione "Nessun Driver" -->
@@ -554,7 +595,7 @@
 			</span>
 		
 			<!-- Mostra solo i sistemi che NON hanno driver INTRACK e NON hanno scelto "none" -->
-			{#each systems.filter(system => system.currentDriver && system.currentDriver.startsWith('AT')) as system, systemIndex}
+			{#each systems.filter(system => system.currentDriver && system.currentDriver.startsWith('AT')) as system}
 			{@const originalSystemIndex = systems.indexOf(system)}
 				<div class="mb-6">
 					<h3 class="mb-3 text-xl font-medium">Sistema {originalSystemIndex + 1} - {system.currentDriver}</h3>
@@ -578,7 +619,7 @@
 									</span>
 									<span class="text-sm text-muted-foreground">
 										{$_("config.quantity")}: {Math.max(
-											Math.ceil(power / drivers.find((d) => d.code === system.currentDriver)!.power),
+											Math.ceil(Math.abs(system.totalPower) / drivers.find((d) => d.code === system.currentDriver)!.power),
 											minDrivers,
 										)}
 									</span>
@@ -667,7 +708,7 @@
 			<span class="mb-6 text-5xl font-semibold">{$_("invoice.box")}</span>
 		
 			<!-- Mostra solo i sistemi che NON hanno driver INTRACK e NON hanno scelto "none" -->
-			{#each systems.filter(system => system.currentDriver && system.currentDriver.startsWith('AT')) as system, systemIndex}
+			{#each systems.filter(system => system.currentDriver && system.currentDriver.startsWith('AT')) as system}
 				{@const originalSystemIndex = systems.indexOf(system)}
 				<div class="mb-6">
 					<h3 class="mb-3 text-xl font-medium">Sistema {originalSystemIndex + 1} - {system.currentDriver}</h3>
@@ -691,7 +732,7 @@
 									</span>
 									<span class="text-sm text-muted-foreground">
 										{$_("config.quantity")}: {Math.max(
-											Math.ceil(power / drivers.find((d) => d.code === system.currentDriver)!.power),
+											Math.ceil(Math.abs(system.totalPower) / drivers.find((d) => d.code === system.currentDriver)!.power),
 											minDrivers,
 										)}
 									</span>
