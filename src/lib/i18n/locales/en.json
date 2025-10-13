@@ -139,6 +139,7 @@
     "terms": {
       "Profili a sospensione": "Suspended profiles",
       "Profili incasso": "Recessed profiles",
+      "Profili ad incasso": "Recessed profiles",
       "Profili superficiali": "Surface profiles",
       "Profilo ad incasso verticale": "Vertical recessed profiles",
       "Connettore a L": "L-shaped connector",
@@ -155,12 +156,14 @@
       "Connettori superficie": "Surface connectors",
       "Connettori incasso": "Recessed connectors",
       "Accessori superficie": "Surface accessories",
+      "Accessori incasso": "Recessed accessories",
       "Lineare": "Linear",
       "Curvo": "Curved",
       "Curva": "Curved",
       "Superficie": "Surface",
       "Profilo": "Profile",
       "Profilo ad incasso": "Recessed profile",
+      "Profilo superficiale": "Surface profile",
       "Incasso": "Recessed",
       "Connettore": "Connector",
       "Connettori": "Connectors",
@@ -169,10 +172,13 @@
       "Luce": "Light",
       "Luce sospesa": "Suspended light",
       "Luce sferica": "Spherical light",
+      "Luce decorativa tonda": "Rounded decorative light",
+      "Luce decorativa quadrata": "Square decorative light",
       "Proiettore regolabile": "Adjustable projector",
       "Connettore ciclico": "Cyclic connector",
       "Corto": "Short",
       "Lungo": "Long",
+      "Orientabile": "Adjustable",
       "Verticale": "Vertical",
       "Profili dritti": "Linear profiles",
       "Profilo dritto": "Linear profile",
@@ -182,7 +188,11 @@
       "Proiettore orientabile zoomabile": "Zoomable adjustable projector",
       "Proiettore orientabile zoomabile curvo": "Curved zoomable adjustable projector",
       "Proiettore orientabile con forma": "Shape adjustable projector",
-      "Proiettore": "Projector"
+      "Proiettore": "Projector",
+      "Proiettore lineare": "Linear projector",
+      "Tappo con accesso alimentazione": "End cap with power cable access",
+      "Con accesso alimentazione": "With power cable access",
+      "Tappo": "End cap"
     }
   }
 }

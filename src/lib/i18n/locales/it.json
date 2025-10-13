@@ -139,6 +139,7 @@
     "terms": {
       "Profili a sospensione": "Profili a sospensione",
       "Profili incasso": "Profili incasso",
+      "Profili ad incasso": "Profili ad incasso",
       "Profili superficiali": "Profili superficiali",
       "Profilo ad incasso verticale": "Profilo ad incasso verticale",
       "Connettore a L": "Connettore a L",
@@ -155,12 +156,14 @@
       "Connettori superficie": "Connettori superficie",
       "Connettori incasso": "Connettori incasso",
       "Accessori superficie": "Accessori superficie",
+      "Accessori incasso": "Accessori incasso",
       "Lineare": "Lineare",
       "Curvo": "Curvo",
       "Curva": "Curva",
       "Superficie": "Superficie",
       "Profilo": "Profilo",
       "Profilo ad incasso": "Profilo ad incasso",
+      "Profilo superficiale": "Profilo superficiale",
       "Incasso": "Incasso",
       "Connettore": "Connettore",
       "Connettori": "Connettori",
@@ -169,10 +172,13 @@
       "Luce": "Luce",
       "Luce sospesa": "Luce sospesa",
       "Luce sferica": "Luce sferica",
+      "Luce decorativa tonda": "Luce decorativa tonda",
+      "Luce decorativa quadrata": "Luce decorativa quadrata",
       "Proiettore regolabile": "Proiettore regolabile",
       "Connettore ciclico": "Connettore ciclico",
       "Corto": "Corto",
       "Lungo": "Lungo",
+      "Orientabile": "Orientabile",
       "Verticale": "Verticale",
       "Profili dritti": "Profili dritti",
       "Profilo dritto": "Profilo dritto",
@@ -182,7 +188,11 @@
       "Proiettore orientabile zoomabile": "Proiettore orientabile zoomabile",
       "Proiettore orientabile zoomabile curvo": "Proiettore orientabile zoomabile curvo",
       "Proiettore orientabile con forma": "Proiettore orientabile con forma",
-      "Proiettore": "Proiettore"
+      "Proiettore": "Proiettore",
+      "Proiettore lineare": "Proiettore lineare",
+      "Tappo con accesso alimentazione": "Tappo con accesso alimentazione",
+      "Con accesso alimentazione": "Con accesso alimentazione",
+      "Tappo": "Tappo"
     }
   }
 }
