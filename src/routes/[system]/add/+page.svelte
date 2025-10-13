@@ -827,7 +827,7 @@
 			{@const currentItem = page.state.chosenItem ? family.items.find(item => item.code === page.state.chosenItem) : null}
 			{@const isCurrentItemCurved = currentItem && currentItem.deg > 0}
 			
-			{#if (family.system === "XNet" || family.system === "XFree S") && !configShape?.angle && !isCurrentItemCurved}
+			{#if (family.system === "XNet" || family.system === "XFree S"|| family.system === "XTen") && !configShape?.angle && !isCurrentItemCurved}
 				<ConfigLength
 					{family}
 					allowCustomLength={family.system !== "XFree S"}

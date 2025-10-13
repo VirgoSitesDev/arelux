@@ -15,6 +15,7 @@ export const TEMPERATURE_CONFIGS: TemperatureConfig[] = [
 
 const FAMILY_TEMPERATURE_CONFIG: Record<string, string[]> = {
 	'XNET': ['UWW', 'WW'],
+	'XTEN': ['UWW', 'WW'],
 };
 
 const OBJECT_TEMPERATURE_CONFIG: Record<string, string[]> = {
@@ -58,14 +59,14 @@ export class TemperatureManager {
 	
 	private static getFamilyConfigKey(family: Family): string {
 		if (family.system === 'XNET' || family.system === 'XNet') {
-			const isLightFamily = 
-				family.displayName.toLowerCase().includes('led') || 
+			const isLightFamily =
+				family.displayName.toLowerCase().includes('led') ||
 				family.displayName.toLowerCase().includes('luce') ||
 				family.displayName.toLowerCase().includes('light') ||
 				family.group.toLowerCase().includes('luc') ||
 				family.group.toLowerCase().includes('led') ||
 				family.group.toLowerCase().includes('light') ||
-				family.items.some(item => 
+				family.items.some(item =>
 					item.code.toLowerCase().includes('led') ||
 					item.code.toLowerCase().includes('ww') ||
 					item.code.toLowerCase().includes('nw')
@@ -73,6 +74,25 @@ export class TemperatureManager {
 
 			if (isLightFamily) {
 				return 'XNET';
+			}
+		}
+
+		if (family.system === 'XTEN' || family.system === 'XTen') {
+			const isLightFamily =
+				family.displayName.toLowerCase().includes('led') ||
+				family.displayName.toLowerCase().includes('luce') ||
+				family.displayName.toLowerCase().includes('light') ||
+				family.group.toLowerCase().includes('luc') ||
+				family.group.toLowerCase().includes('led') ||
+				family.group.toLowerCase().includes('light') ||
+				family.items.some(item =>
+					item.code.toLowerCase().includes('led') ||
+					item.code.toLowerCase().includes('ww') ||
+					item.code.toLowerCase().includes('nw')
+				);
+
+			if (isLightFamily) {
+				return 'XTEN';
 			}
 		}
 
