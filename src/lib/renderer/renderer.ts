@@ -62,7 +62,7 @@ interface RoomDimensions {
 class RendererUtils {
 	static isLight(obj: TemporaryObject): boolean {
 		const code = obj.getCatalogEntry().code;
-		return code.includes('XNRS') || code.includes('SP');
+		return code.includes('XNRS') || code.includes('TNRS') || code.includes('SP');
 	}
 
 	static isProfile(obj: TemporaryObject): boolean {

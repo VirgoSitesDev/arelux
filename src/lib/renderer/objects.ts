@@ -51,7 +51,7 @@ function is35mmSurfaceProfile(profileObj: TemporaryObject, renderer: Renderer): 
 
 function isLightObject(obj: TemporaryObject): boolean {
     const code = obj.getCatalogEntry().code;
-    return code.includes('XNRS') || code.includes('SP');
+    return code.includes('XNRS') || code.includes('TNRS') || code.includes('SP');
 }
 
 export class TemporaryObject {
@@ -175,8 +175,9 @@ export class TemporaryObject {
 
 	moveLight(position: number): string | null {
 		position = Math.max(0.01, Math.min(0.99, position));
-	
-		const isLight = this.getCatalogEntry().code.includes('XNRS') || 
+
+		const isLight = this.getCatalogEntry().code.includes('XNRS') ||
+					  this.getCatalogEntry().code.includes('TNRS') ||
 					  this.getCatalogEntry().code.includes('SP');
 					  
 		if (!isLight || !this.mesh) {
@@ -475,7 +476,8 @@ export class TemporaryObject {
 		}
 		
 		let finalT = minI / (points.length - 1);
-		const isLight = other.getCatalogEntry().code.includes('XNRS') || 
+		const isLight = other.getCatalogEntry().code.includes('XNRS') ||
+					  other.getCatalogEntry().code.includes('TNRS') ||
 					  other.getCatalogEntry().code.includes('SP');
 	
 		if (isLight) {
@@ -484,8 +486,9 @@ export class TemporaryObject {
 			
 			for (const obj of allObjects) {
 				if (obj === other) continue;
-				
-				const objIsLight = obj.getCatalogEntry().code.includes('XNRS') || 
+
+				const objIsLight = obj.getCatalogEntry().code.includes('XNRS') ||
+								  obj.getCatalogEntry().code.includes('TNRS') ||
 								  obj.getCatalogEntry().code.includes('SP');
 				
 				if (objIsLight) {
