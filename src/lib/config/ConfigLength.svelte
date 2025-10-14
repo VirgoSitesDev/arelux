@@ -163,7 +163,8 @@
                 max="2500"
                 step="10"
                 class="slider-yellow w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer {disabled ? 'cursor-not-allowed opacity-50' : ''}"
-                oninput={handleSliderChange}
+                oninput={allowCustomLength ? undefined : handleSliderChange}
+                onchange={allowCustomLength ? handleSliderChange : undefined}
                 disabled={disabled}
             />
             
