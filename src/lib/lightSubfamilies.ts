@@ -75,12 +75,13 @@ function getSubfamilyCodeFromName(displayName: string): string {
     'Luci lineari per profili curvi': 'OPR',
     'Proiettori lineari': 'LPR',
     'Luci decorative': 'DEC',
-    'Luci decorative curve': 'DECR', 
+    'Luci decorative curve': 'DECR',
     'Proiettori orientabili': 'SP',
     'Proiettori orientabili curvi': 'SPR',
     'Proiettori orientabili zoomabili': 'SPZ',
     'Proiettori orientabili zoomabili curvi': 'SPZR',
     'Proiettori orientabili con forma': 'FPR',
+    'Proiettori lineari orientabili': 'ALPR',
 
     'Linear lights': 'OP',
     'Linear lights for curved profiles': 'OPR',
@@ -92,8 +93,9 @@ function getSubfamilyCodeFromName(displayName: string): string {
     'Adjustable zoomable projectors': 'SPZ',
     'Adjustable zoomable curved projectors': 'SPZR',
     'Shape adjustable projectors': 'FPR',
+    'Adjustable linear projectors': 'ALPR',
   };
-  
+
   return NAME_TO_CODE[displayName] || displayName.replace(/\s+/g, '_').toUpperCase();
 }
 
@@ -113,8 +115,9 @@ export function getSubfamilyName(code: string, translateFn?: (key: string) => st
     'SPZ': 'Proiettori orientabili zoomabili',
     'SPZR': 'Proiettori orientabili zoomabili curvi',
     'FPR': 'Proiettori orientabili con forma',
+    'ALPR': 'Proiettori lineari orientabili',
   };
-  
+
   return SUBFAMILY_NAMES[code] || code;
 }
 
@@ -122,13 +125,14 @@ const SUBFAMILY_ORDER: Record<string, number> = {
   'OP': 1,
   'OPR': 2,
   'LPR': 3,
-  'DEC': 4,
-  'DECR': 5,
-  'SP': 6,
-  'SPR': 7,
-  'SPZ': 8,
-  'SPZR': 9,
-  'FPR': 10,
+  'ALPR': 4,
+  'DEC': 5,
+  'DECR': 6,
+  'SP': 7,
+  'SPR': 8,
+  'SPZ': 9,
+  'SPZR': 10,
+  'FPR': 11,
 };
 
 export function sortSubfamilies(subfamilies: LightSubfamily[]): LightSubfamily[] {
