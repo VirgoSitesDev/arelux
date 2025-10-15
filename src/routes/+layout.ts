@@ -150,19 +150,20 @@ async function loadFamilies(
 
 			let adjustedLength = element.len;
 			let adjustedRadius = element.radius;
-			
-			if (res[familycode].system.toLowerCase() === 'xnet') {
-				const isProfile = res[familycode].group.toLowerCase().includes('profil') || 
+
+			const systemLower = res[familycode].system.toLowerCase();
+			if (systemLower === 'xnet' || systemLower === 'xten' || systemLower === 'xfive') {
+				const isProfile = res[familycode].group.toLowerCase().includes('profil') ||
 								res[familycode].displayName.toLowerCase().includes('profil');
-				
-				const isStraightProfile = isProfile && 
+
+				const isStraightProfile = isProfile &&
 										(element.angle === 0 || element.angle === -1 || element.angle === null) &&
 										!element.objectcode.toLowerCase().includes('c');
-				
+
 				if (isStraightProfile && element.len === 1000) {
 					adjustedLength = 2500;
 				}
-				
+
 				if (isStraightProfile && element.radius === 1000) {
 					adjustedRadius = 2500;
 				}
@@ -199,7 +200,8 @@ async function loadFamilies(
                    color.toLowerCase() === 'sbk';
 		};
 
-		if (family.system === 'xnet' || family.system === 'XNet') {
+		const systemLower = family.system.toLowerCase();
+		if (systemLower === 'xnet' || systemLower === 'xten' || systemLower === 'xfive') {
 			family.items.sort((a, b) => {
 				if ((a.deg === 0 || a.deg === -1) && b.deg > 0) return -1;
 				if (a.deg > 0 && (b.deg === 0 || b.deg === -1)) return 1;
