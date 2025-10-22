@@ -834,12 +834,41 @@
 					disabled={configControlsDisabled}
 					onsubmit={(objectCode, length, isCustom) => {
 						if (configControlsDisabled) return;
-						
-						console.log('🔍 ConfigLength onsubmit:', { objectCode, length, isCustom });
+
 						configLength = length;
-						
+
+						// Systems that need color preservation when changing length
+						const supportsCustomLength = family.system === "XNet" || family.system === "XTen" || family.system === "XFive";
+						const hasDiscreteColorLengths = family.system === "XFree S";
+						let finalObjectCode = objectCode;
+
+						if ((supportsCustomLength || hasDiscreteColorLengths) && page.state.chosenItem) {
+							const currentItem = family.items.find(i => i.code === page.state.chosenItem);
+							if (currentItem && currentItem.color) {
+								let matchingColorItem;
+
+								if (supportsCustomLength) {
+									// For custom length systems (XNet, XTen, XFive):
+									// Find the item with the same color (at standard length - will be scaled)
+									matchingColorItem = family.items.find(i =>
+										i.color === currentItem.color
+									);
+								} else if (hasDiscreteColorLengths) {
+									// For discrete length systems (XFree S):
+									// Find the item with same color AND exact length match
+									matchingColorItem = family.items.find(i =>
+										i.color === currentItem.color && i.len === length
+									);
+								}
+
+								if (matchingColorItem) {
+									finalObjectCode = matchingColorItem.code;
+								}
+							}
+						}
+
 						replaceState('', {
-							chosenItem: objectCode,
+							chosenItem: finalObjectCode,
 							chosenFamily: page.state.chosenFamily,
 							reference: page.state.reference,
 							length: length,
@@ -865,22 +894,30 @@
 		{/if}
 
 	{#if family.needsColorConfig}
+		{@const supportsCustomLength = family.system === "XNet" || family.system === "XTen" || family.system === "XFive"}
 		<ConfigColor
 			items={family.items.map((i) => i.color)}
 			disabled={configControlsDisabled || (family.needsCurveConfig && configShape === undefined) ||
-			(family.needsLengthConfig && configLength === undefined)}
+			(family.needsLengthConfig && !supportsCustomLength && configLength === undefined)}
 			onsubmit={(color) => {
 				if (configControlsDisabled) return;
-				
+
 				const { angle, radius } = configShape ?? { angle: -1, radius: -1 };
 				const { needsCurveConfig, needsLengthConfig } = family;
-				
+
 				// Ottieni la temperatura corrente
 				const currentTemp = getCurrentTemperature(page.state.chosenItem);
-				
+
+				const supportsCustomLength = family.system === "XNet" || family.system === "XTen" || family.system === "XFive";
+
+				// For custom length systems, try to preserve the current length
+				const currentLength = configLength || page.state.length;
+
 				const items = family.items
 					.filter((i) => (needsCurveConfig ? i.deg === angle && i.radius === radius : true))
-					.filter((i) => (needsLengthConfig ? i.len === configLength : true))
+					// For discrete length systems (XFree S): filter by exact length
+					// For custom length systems (XNet, XTen, XFive): don't filter by length (will be scaled)
+					.filter((i) => (needsLengthConfig && !supportsCustomLength ? i.len === configLength : true))
 					.filter((i) => i.color === color)
 					.filter((i) => {
 						// Filtra anche per temperatura se disponibile
@@ -890,16 +927,22 @@
 						}
 						return true;
 					});
-					
+
 				if (items.length === 0) {
 					console.error("Nessun item trovato con colore:", color, "e temperatura:", currentTemp?.suffix);
 					throw new Error("what?");
 				}
-				
+
+				// For custom length systems, just use the first item (standard length)
+				// and preserve the custom length value in state
+				let selectedItem = items[0];
+
 				replaceState('', {
-					chosenItem: items[0].code,
+					chosenItem: selectedItem.code,
 					chosenFamily: page.state.chosenFamily,
 					reference: page.state.reference,
+					length: supportsCustomLength && currentLength !== undefined ? currentLength : (selectedItem.len > 0 ? selectedItem.len : undefined),
+					isCustomLength: page.state.isCustomLength,
 				});
 			}}
 		/>

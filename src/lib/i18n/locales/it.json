@@ -16,7 +16,9 @@
     "error": "Errore",
     "success": "Successo",
     "warning": "Attenzione",
-    "info": "Informazione"
+    "info": "Informazione",
+    "confirmExit": "Conferma uscita",
+    "confirmExitMessage": "Sei sicuro di voler tornare indietro? Perderai la configurazione attuale."
   },
   "home": {
     "title": "Scegli il sistema che vuoi configurare:",

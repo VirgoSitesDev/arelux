@@ -488,12 +488,12 @@
 				class="fixed left-[50%] top-[50%] z-50 w-full max-w-[94%] translate-x-[-50%] translate-y-[-50%] rounded bg-background p-5 shadow-popover outline-none lg:w-2/5"
 			>
 				<Dialog.Title class="flex w-full items-center text-left text-2xl font-bold">
-					Conferma uscita
+					{$_('common.confirmExit')}
 				</Dialog.Title>
 				<Separator.Root class="-mx-5 mb-3 mt-3 block h-px bg-muted" />
 
 				<Dialog.Description>
-					<p class="mb-6">Sei sicuro di voler tornare indietro? Perderai la configurazione attuale.</p>
+					<p class="mb-6">{$_('common.confirmExitMessage')}</p>
 					
 					<div class="flex gap-3">
 						<button 

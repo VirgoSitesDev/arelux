@@ -16,7 +16,9 @@
     "error": "Error",
     "success": "Success",
     "warning": "Warning",
-    "info": "Information"
+    "info": "Information",
+    "confirmExit": "Confirm Exit",
+    "confirmExitMessage": "Are you sure you want to go back? You will lose the current configuration."
   },
   "home": {
     "title": "Choose the system you want to configure:",
