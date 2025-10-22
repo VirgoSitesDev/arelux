@@ -51,7 +51,7 @@ function is35mmSurfaceProfile(profileObj: TemporaryObject, renderer: Renderer): 
 
 function isLightObject(obj: TemporaryObject): boolean {
     const code = obj.getCatalogEntry().code;
-    return code.includes('XNRS') || code.includes('TNRS') || code.includes('SP');
+    return code.includes('XNRS') || code.includes('TNRS') || code.includes('FVRS') || code.includes('SP');
 }
 
 export class TemporaryObject {
@@ -178,6 +178,7 @@ export class TemporaryObject {
 
 		const isLight = this.getCatalogEntry().code.includes('XNRS') ||
 					  this.getCatalogEntry().code.includes('TNRS') ||
+					  this.getCatalogEntry().code.includes('FVRS') ||
 					  this.getCatalogEntry().code.includes('SP');
 					  
 		if (!isLight || !this.mesh) {
@@ -234,23 +235,28 @@ export class TemporaryObject {
 			const isCurvedProfile = parentObject.getCatalogEntry().code.includes('C');
 
 			const lineJunct = parentObject.getCatalogEntry().line_juncts[parentJunctionId];
-			const lineDirection = new Vector3()
+			let lineDirection = new Vector3()
 				.subVectors(lineJunct.point2, lineJunct.point1)
 				.normalize();
 
-			const isVerticalProfile = Math.abs(lineDirection.y) > Math.abs(lineDirection.x) && 
+			const isVerticalProfile = Math.abs(lineDirection.y) > Math.abs(lineDirection.x) &&
 									Math.abs(lineDirection.y) > Math.abs(lineDirection.z);
 
 			let angleY, angleX = 0, angleZ = 0;
 
 			if (isVerticalProfile) {
+				const profileSystem = parentObject.getCatalogEntry().system;
+				if (profileSystem === 'XFive') {
+					lineDirection.negate();
+				}
+
 				angleZ = lineDirection.y > 0 ? Math.PI / 2 : -Math.PI / 2;
 				angleY = 0;
 
 				if (Math.abs(lineDirection.x) > 0.01 || Math.abs(lineDirection.z) > 0.01) {
 					angleY += Math.atan2(lineDirection.x, lineDirection.z);
 				}
-				
+
 				this.mesh.rotation.set(angleX, angleY || 0, angleZ);
 			} else {
 				angleY = Math.atan2(profileDir.x, profileDir.z) + (isCurvedProfile ? Math.PI : Math.PI / 2);
@@ -478,6 +484,7 @@ export class TemporaryObject {
 		let finalT = minI / (points.length - 1);
 		const isLight = other.getCatalogEntry().code.includes('XNRS') ||
 					  other.getCatalogEntry().code.includes('TNRS') ||
+					  other.getCatalogEntry().code.includes('FVRS') ||
 					  other.getCatalogEntry().code.includes('SP');
 	
 		if (isLight) {
@@ -489,6 +496,7 @@ export class TemporaryObject {
 
 				const objIsLight = obj.getCatalogEntry().code.includes('XNRS') ||
 								  obj.getCatalogEntry().code.includes('TNRS') ||
+								  obj.getCatalogEntry().code.includes('FVRS') ||
 								  obj.getCatalogEntry().code.includes('SP');
 				
 				if (objIsLight) {
@@ -567,21 +575,26 @@ export class TemporaryObject {
 			other.mesh.rotation.set(0, 0, 0);
 			const profileDir = tan.clone().normalize();
 			const isCurvedProfile = this.getCatalogEntry().code.includes('C');
-			
+
 			const lineJunct = this.getCatalogEntry().line_juncts[0];
-			const lineDirection = new Vector3()
+			let lineDirection = new Vector3()
 				.subVectors(lineJunct.point2, lineJunct.point1)
 				.normalize();
-			
-			const isVerticalProfile = Math.abs(lineDirection.y) > Math.abs(lineDirection.x) && 
+
+			const isVerticalProfile = Math.abs(lineDirection.y) > Math.abs(lineDirection.x) &&
 									 Math.abs(lineDirection.y) > Math.abs(lineDirection.z);
-			
+
 			let angleY, angleX = 0, angleZ = 0;
-			
+
 			if (isVerticalProfile) {
+				const profileSystem = this.getCatalogEntry().system;
+				if (profileSystem === 'XFive') {
+					lineDirection.negate();
+				}
+
 				angleZ = lineDirection.y > 0 ? Math.PI / 2 : -Math.PI / 2;
 				angleY = 0;
-		
+
 				if (Math.abs(lineDirection.x) > 0.01 || Math.abs(lineDirection.z) > 0.01) {
 					angleY += Math.atan2(lineDirection.x, lineDirection.z);
 				}
@@ -590,7 +603,7 @@ export class TemporaryObject {
 				angleY = Math.atan2(profileDir.x, profileDir.z) + (isCurvedProfile ? Math.PI : Math.PI / 2);
 				other.mesh.rotation.set(0, angleY, 0);
 			}
-			
+
 			const junctionAngle = other.getCatalogEntry().juncts[0].angle * (Math.PI/180);
 			other.mesh.rotateY(junctionAngle);
 		}
