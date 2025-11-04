@@ -115,13 +115,26 @@
 	const drivers = [
 		{ code: 'XNRS01DV', power: 150 },
 		{ code: 'XNRS02DV', power: 250 },
+		{ code: 'TNRS01DV', power: 200 },
 		{ code: 'AT48.100', power: 100 },
 		{ code: 'AT48.150', power: 150 },
 		{ code: 'AT48.200', power: 200 },
 		{ code: 'AT48.350', power: 350 },
 	];
-	const powerSupplies = ['XNRS01PCO.5', 'XNRS01PC2.5'];
+	const powerSupplies = ['XNRS01PCO.5', 'XNRS01PC2.5', 'TNRS01PC3.5'];
 	const boxes = ['SMCKS01SDB', 'SMCKS02SDB', 'SMCKS02TDB', 'SMCKS03TDB'];
+
+	const availablePowerSupplies = $derived.by(() => {
+		const currentSystem = page.data.system.toLowerCase().replace(' ', '_');
+
+		if (currentSystem === 'xnet') {
+			return powerSupplies.filter((psu) => psu.startsWith('XNRS'));
+		} else if (currentSystem === 'xten') {
+			return powerSupplies.filter((psu) => psu.startsWith('TNRS'));
+		}
+
+		return powerSupplies;
+	});
 
 	const availableDrivers = $derived.by(() => {
 		const currentSystem = page.data.system.toLowerCase().replace(' ', '_');
@@ -132,8 +145,13 @@
 			console.log('SYSTEM DEBUG - XFREE system, available drivers:', filtered);
 			return filtered;
 		} else if (currentSystem === 'xnet') {
-			console.log('SYSTEM DEBUG - XNET system, all drivers available:', drivers);
-			return drivers;
+			const filtered = drivers.filter((driver) => driver.code.startsWith('XNRS') || driver.code.startsWith('AT'));
+			console.log('SYSTEM DEBUG - XNET system, available drivers:', filtered);
+			return filtered;
+		} else if (currentSystem === 'xten') {
+			const filtered = drivers.filter((driver) => driver.code.startsWith('TNRS') || driver.code.startsWith('AT'));
+			console.log('SYSTEM DEBUG - XTEN system, available drivers:', filtered);
+			return filtered;
 		}
 
 		console.log('SYSTEM DEBUG - Default case, all drivers available:', drivers);
@@ -170,7 +188,7 @@
 			systemObjects.forEach(o => visitedObjects.add(o.object!.id));
 			
 			const systemPower = getPowerBudget(page.data.catalog, systemObjects);
-			const systemId = `Sistema ${systemGroups.length + 1}`;
+			const systemId = `${$_("config.system")} ${systemGroups.length + 1}`;
 			console.log(`SYSTEM POWER DEBUG - ${systemId}: ${systemPower}W (${systemObjects.length} objects)`);
 
 			systemGroups.push({
@@ -202,7 +220,7 @@
 
 	$effect(() => {
 		const currentSystem = page.data.system.toLowerCase().replace(' ', '_');
-		
+
 		if (currentSystem === 'xfree_s' || currentSystem === 'xfrees') {
 			if (remoteDrivers.length > 0) {
 				systems.forEach(system => {
@@ -221,6 +239,12 @@
 					}
 				}
 			});
+		} else if (currentSystem === 'xten') {
+			systems.forEach(system => {
+				if (!system.currentDriver && intrackDrivers.length > 0) {
+					system.currentDriver = intrackDrivers[0].code; // TNRS01DV
+				}
+			});
 		}
 	});
 
@@ -233,7 +257,7 @@
 	}
 
 	async function submit() {
-		if (email === '') return toast.error("Inserisci un'email valida");
+		if (email === '') return toast.error($_("invoice.invalidEmail"));
 
 		sendingEmail = true;
 		const itemsMap: Map<string, number> = new Map();
@@ -309,10 +333,10 @@
 		sendingEmail = false;
 
 		if (resp.error !== null || (resp.data.statusCode && resp.data.statusCode !== 200)) {
-			toast.error("C'è stato un errore durante l'invio della mail");
+			toast.error($_("invoice.emailError"));
 			console.error('Failed to send email:', resp.error, resp.data);
 		} else {
-			toast.success('Preventivo inviato, controlla la tua mail');
+			toast.success($_("invoice.emailSent"));
 		}
 	}
 
@@ -323,11 +347,10 @@
 	class="absolute bottom-0 left-0 right-0 top-0 z-10 flex flex-col items-start justify-center bg-white p-10"
 >
 	{#if askForLeds && (page.state.currentPage === 0 || page.state.currentPage === undefined)}
-		<span class="text-5xl font-semibold">Scegli i tuoi componenti o prosegui</span>
+		<span class="text-5xl font-semibold">{$_("config.selectComponents")}</span>
 
 		<span class="py-6 text-2xl font-light">
-			Per le configurzione a sospensione o a 3 cm dal soffito si può utilizzare strip led per
-			illuminazione indiretta.
+			{$_("config.componentSelectionDescription")}
 		</span>
 
 		<Table.Root>
@@ -376,21 +399,21 @@
 							{$_("config.totalPower")}: {system.totalPower}W
 						</span>
 						<div class="text-sm text-gray-500 mt-1">
-							{system.objects.length} oggetti connessi
+							{system.objects.length} {$_("system.connectedObjects")}
 						</div>
 					</div>
 
 					<div class="grid gap-3" class:grid-cols-3={showIntrack && showRemote} class:grid-cols-2={!(showIntrack && showRemote)}>
 						{#if showIntrack && showRemote}
-							<span class="text-center">INTRACK</span>
-							<span class="text-center">REMOTE</span>
-							<span class="text-center">NESSUNO</span>
+							<span class="text-center">{$_("config.intrack")}</span>
+							<span class="text-center">{$_("config.remote")}</span>
+							<span class="text-center">{$_("config.none")}</span>
 						{:else if showIntrack}
-							<span class="text-center">INTRACK</span>
-							<span class="text-center">NESSUNO</span>
+							<span class="text-center">{$_("config.intrack")}</span>
+							<span class="text-center">{$_("config.none")}</span>
 						{:else if showRemote}
-							<span class="text-center">REMOTE</span>
-							<span class="text-center">NESSUNO</span>
+							<span class="text-center">{$_("config.remote")}</span>
+							<span class="text-center">{$_("config.none")}</span>
 						{/if}
 						
 						{#if showIntrack}
@@ -533,11 +556,11 @@
 							>
 								<div class="flex h-full flex-col justify-start">
 									<span class="mb-2 mt-3 text-lg font-medium">
-										Nessun Driver
+										{$_("config.noDriver")}
 									</span>
-			
+
 									<span class="text-sm text-muted-foreground">
-										Nessun driver necessario
+										{$_("config.noDriverRequired")}
 									</span>
 								</div>
 			
@@ -598,9 +621,9 @@
 			{#each systems.filter(system => system.currentDriver && system.currentDriver.startsWith('AT')) as system}
 			{@const originalSystemIndex = systems.indexOf(system)}
 				<div class="mb-6">
-					<h3 class="mb-3 text-xl font-medium">Sistema {originalSystemIndex + 1} - {system.currentDriver}</h3>
+					<h3 class="mb-3 text-xl font-medium">{$_("config.system")} {originalSystemIndex + 1} - {system.currentDriver}</h3>
 					<div class="grid grid-cols-3 gap-3">
-						{#each powerSupplies as psu}
+						{#each availablePowerSupplies as psu}
 							{@const url = page.data.supabase.storage
 								.from('arelux-italia')
 								.getPublicUrl(`images/${psu}.webp`).data.publicUrl}
@@ -658,10 +681,10 @@
 						>
 							<div class="flex h-full flex-col justify-start">
 								<span class="mb-2 mt-3 text-lg font-medium">
-									Nessuna testa
+									{$_("config.noHead")}
 								</span>
 								<span class="text-sm text-muted-foreground">
-									Nessuna testa necessaria
+									{$_("config.noHeadRequired")}
 								</span>
 							</div>
 							<div class="relative ml-auto flex h-[125px] w-[125px] items-center justify-center rounded-full border-4 bg-gray-100">
@@ -676,7 +699,7 @@
 			{#if systems.every(s => s.currentDriver === 'none' || (s.currentDriver && !s.currentDriver.startsWith('AT')))}
 				<div class="text-center py-6">
 					<p class="text-lg text-muted-foreground">
-						Tutti i sistemi utilizzano driver INTRACK o nessun driver - nessun alimentatore necessario
+						{$_("config.allSystemsIntrackOrNone")}
 					</p>
 				</div>
 			{/if}
@@ -711,7 +734,7 @@
 			{#each systems.filter(system => system.currentDriver && system.currentDriver.startsWith('AT')) as system}
 				{@const originalSystemIndex = systems.indexOf(system)}
 				<div class="mb-6">
-					<h3 class="mb-3 text-xl font-medium">Sistema {originalSystemIndex + 1} - {system.currentDriver}</h3>
+					<h3 class="mb-3 text-xl font-medium">{$_("config.system")} {originalSystemIndex + 1} - {system.currentDriver}</h3>
 					<div class="grid grid-cols-3 gap-3">
 						{#each boxes as box}
 							{@const url = page.data.supabase.storage
@@ -771,10 +794,10 @@
 						>
 							<div class="flex h-full flex-col justify-start">
 								<span class="mb-2 mt-3 text-lg font-medium">
-									Nessuna scatola
+									{$_("config.noBox")}
 								</span>
 								<span class="text-sm text-muted-foreground">
-									Nessuna scatola necessaria
+									{$_("config.noBoxRequired")}
 								</span>
 							</div>
 							<div class="relative ml-auto flex h-[125px] w-[125px] items-center justify-center rounded-full border-4 bg-gray-100">
@@ -789,7 +812,7 @@
 			{#if systems.every(s => s.currentDriver === 'none' || (s.currentDriver && !s.currentDriver.startsWith('AT')))}
 				<div class="text-center py-6">
 					<p class="text-lg text-muted-foreground">
-						Tutti i sistemi utilizzano driver INTRACK o nessun driver - nessuna scatola necessaria
+						{$_("config.allSystemsNoBox")}
 					</p>
 				</div>
 			{/if}

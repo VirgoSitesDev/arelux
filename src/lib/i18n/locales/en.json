@@ -31,6 +31,7 @@
   "config": {
     "modifyObject": "Modify the object to insert",
     "selectComponents": "Choose your components or continue",
+    "componentSelectionDescription": "For suspended or 3cm from ceiling configurations, LED strips can be used for indirect lighting.",
     "selectDrivers": "Select which drivers you want to install",
     "totalPower": "Total power",
     "quantity": "Quantity",
@@ -49,8 +50,20 @@
     "editRoomSize": "Edit room size",
     "helpInfo": "Help and info",
     "download": "Download configuration",
+    "intrack": "INTRACK",
+    "remote": "REMOTE",
+    "none": "NONE",
     "noDriver": "No Driver",
-    "proceedWithoutDriver": "Proceed without selecting any Driver as power source"
+    "noDriverRequired": "No driver required",
+    "proceedWithoutDriver": "Proceed without selecting any Driver as power source",
+    "system": "System",
+    "noHead": "No head",
+    "noHeadRequired": "No head required",
+    "noBox": "No box",
+    "noBoxRequired": "No box required",
+    "allSystemsIntrackOrNone": "All systems use INTRACK drivers or no driver - no power supply required",
+    "allSystemsNoBox": "All systems use INTRACK drivers or no driver - no box required",
+    "autoConnector": "Auto connector"
   },
   "invoice": {
     "title": "Quote",

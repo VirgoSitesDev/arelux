@@ -31,6 +31,7 @@
   "config": {
     "modifyObject": "Modifica l'oggetto da inserire",
     "selectComponents": "Scegli i tuoi componenti o prosegui",
+    "componentSelectionDescription": "Per le configurazioni a sospensione o a 3 cm dal soffitto si può utilizzare strip led per illuminazione indiretta.",
     "selectDrivers": "Seleziona quali driver vuoi installare",
     "totalPower": "Potenza totale",
     "quantity": "Quantità",
@@ -49,8 +50,20 @@
     "editRoomSize": "Modifica dimensioni stanza",
     "helpInfo": "Aiuto e informazioni",
     "download": "Scarica configurazione",
+    "intrack": "INTRACK",
+    "remote": "REMOTE",
+    "none": "NESSUNO",
     "noDriver": "Nessun Driver",
-    "proceedWithoutDriver": "Procedi senza selezionare un driver per l'alimentazione"
+    "noDriverRequired": "Nessun driver necessario",
+    "proceedWithoutDriver": "Procedi senza selezionare un driver per l'alimentazione",
+    "system": "Sistema",
+    "noHead": "Nessuna testa",
+    "noHeadRequired": "Nessuna testa necessaria",
+    "noBox": "Nessuna scatola",
+    "noBoxRequired": "Nessuna scatola necessaria",
+    "allSystemsIntrackOrNone": "Tutti i sistemi utilizzano driver INTRACK o nessun driver - nessun alimentatore necessario",
+    "allSystemsNoBox": "Tutti i sistemi utilizzano driver INTRACK o nessun driver - nessuna scatola necessaria",
+    "autoConnector": "Connettore automatico"
   },
   "invoice": {
     "title": "Preventivo",

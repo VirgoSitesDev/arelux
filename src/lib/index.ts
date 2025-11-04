@@ -15,6 +15,7 @@ import type { Vector3Like } from 'three';
 import type { RendererObject } from './renderer/objects';
 import _ from 'lodash';
 import { getRequiredConnector4Family } from './connectorRules';
+import { _ as translate } from 'svelte-i18n';
 
 export let objects: Writable<SavedObject[]> = writable([]);
 
@@ -158,6 +159,46 @@ export async function finishEdit(
 		}),
 	);
 
+	// Add special XFive connector pieces when the connector is added
+	if (page.data.system === 'XFive') {
+		const itemCode = state.chosenItem;
+		const specialConnectors: Array<{ codes: string[], required: string[] }> = [
+			// T-shaped connectors require 1x FVRS01TFC
+			{ codes: ['FVR01TC', 'FVS01TC'], required: ['FVRS01TFC'] },
+			// X-shaped connectors require 2x FVRS01FC
+			{ codes: ['FVR01XC', 'FVS01XC'], required: ['FVRS01FC', 'FVRS01FC'] },
+			// L-shaped, internal angle, external angle connectors require 1x FVRS01FC
+			{ codes: ['FVR01C90', 'FVS01C90', 'FVR01IAC', 'FVS01IAC', 'FVR01EAC', 'FVS01EAC'], required: ['FVRS01FC'] },
+		];
+
+		for (const { codes, required } of specialConnectors) {
+			if (codes.some(code => itemCode.includes(code))) {
+				// Extract color from the connector code
+				const hasMBK = itemCode.includes('MBK');
+				const hasMWH = itemCode.includes('MWH');
+				const color = hasMBK ? 'MBK' : hasMWH ? 'MWH' : null;
+
+				if (color) {
+					// Add the required connector pieces with matching color
+					objects.update((objs) => [
+						...objs,
+						...required.map(requiredCode => ({
+							code: `${requiredCode} ${color}`,
+							desc1: get(translate)('config.autoConnector'),
+							desc2: '',
+							subobjects: [],
+							length: 0,
+							hidden: true as const,
+							isAutoConnector: true,
+							connectedTo: [obj.id],
+						}))
+					]);
+				}
+				break; // Exit after finding the match
+			}
+		}
+	}
+
 	const junctions = obj.getJunctions();
 	for (let i = 0; i < junctions.length; i++) {
 		const connectedObj = junctions[i];
@@ -178,22 +219,22 @@ export async function finishEdit(
 					{ code: connectedSavedObj.code, family: parentFamily, system: page.data.catalog[connectedSavedObj.code]?.system || '' },
 					{ code: state.chosenItem, family: currentFamily, system: page.data.catalog[state.chosenItem]?.system || '' }
 				);
-				
+
 				if (connectorCode) {
 					const connectionIds = [connectedSavedObj.object?.id, obj.id]
 						.filter((id): id is string => id !== undefined)
 						.sort();
-					
+
 					if (connectionIds.length === 2) {
 						objects.update((objs) => [
 							...objs,
 							{
 								code: connectorCode,
-								desc1: 'Connettore automatico',
+								desc1: get(translate)('config.autoConnector'),
 								desc2: '',
 								subobjects: [],
 								length: 0,
-								hidden: true,
+								hidden: true as const,
 								isAutoConnector: true,
 								connectedTo: connectionIds,
 							}
