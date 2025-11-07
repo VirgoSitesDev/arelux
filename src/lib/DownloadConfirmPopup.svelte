@@ -116,12 +116,13 @@
 		{ code: 'XNRS01DV', power: 150 },
 		{ code: 'XNRS02DV', power: 250 },
 		{ code: 'TNRS01DV', power: 200 },
+		{ code: 'FVRS01DV', power: 200 },
 		{ code: 'AT48.100', power: 100 },
 		{ code: 'AT48.150', power: 150 },
 		{ code: 'AT48.200', power: 200 },
 		{ code: 'AT48.350', power: 350 },
 	];
-	const powerSupplies = ['XNRS01PCO.5', 'XNRS01PC2.5', 'TNRS01PC3.5'];
+	const powerSupplies = ['XNRS01PCO.5', 'XNRS01PC2.5', 'TNRS01PC3.5', 'FVRS01PC MBK', 'FVRS01PC MWH'];
 	const boxes = ['SMCKS01SDB', 'SMCKS02SDB', 'SMCKS02TDB', 'SMCKS03TDB'];
 
 	const availablePowerSupplies = $derived.by(() => {
@@ -131,6 +132,8 @@
 			return powerSupplies.filter((psu) => psu.startsWith('XNRS'));
 		} else if (currentSystem === 'xten') {
 			return powerSupplies.filter((psu) => psu.startsWith('TNRS'));
+		} else if (currentSystem === 'xfive') {
+			return powerSupplies.filter((psu) => psu.startsWith('FVRS'));
 		}
 
 		return powerSupplies;
@@ -151,6 +154,10 @@
 		} else if (currentSystem === 'xten') {
 			const filtered = drivers.filter((driver) => driver.code.startsWith('TNRS') || driver.code.startsWith('AT'));
 			console.log('SYSTEM DEBUG - XTEN system, available drivers:', filtered);
+			return filtered;
+		} else if (currentSystem === 'xfive') {
+			const filtered = drivers.filter((driver) => driver.code.startsWith('FVRS') || driver.code.startsWith('AT'));
+			console.log('SYSTEM DEBUG - XFIVE system, available drivers:', filtered);
 			return filtered;
 		}
 

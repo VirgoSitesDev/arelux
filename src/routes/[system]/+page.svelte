@@ -506,7 +506,7 @@
 							class="flex-1 text-center rounded-md transition-all shadow-btn active:scale-98 active:shadow-btn-active bg-yellow-400 hover:bg-yellow-300 text-black py-2"
 							onclick={confirmBack}
 						>
-							Conferma
+							{$_('common.confirm')}
 						</button>
 					</div>
 				</Dialog.Description>

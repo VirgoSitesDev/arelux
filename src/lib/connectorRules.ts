@@ -5,10 +5,14 @@ export function getRequiredConnector4Family(
 
     const isProfile1 = obj1.family.includes("Profili");
     const isProfile2 = obj2.family.includes("Profili");
+    const isConnector1 = obj1.family.includes("Connettor");
+    const isConnector2 = obj2.family.includes("Connettor");
 
     // Special handling for XTen: works for profile-to-profile AND profile-to-connector
     if (obj1.system === "XTen" && obj2.system === "XTen") {
-        if ((isProfile1 || isProfile2) && obj1.family === obj2.family) {
+        // Add connector for: profile-to-profile OR profile-to-connector
+        // Exclude: light-to-profile connections
+        if ((isProfile1 && isProfile2) || (isProfile1 && isConnector2) || (isProfile2 && isConnector1)) {
             return getRequiredConnectorXTen(obj1, obj2);
         }
     }
