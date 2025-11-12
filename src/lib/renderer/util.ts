@@ -18,10 +18,16 @@ export async function loadModel(
 	variant: 'model' | 'simplified' = 'model',
 ): Promise<Group> {
 	const baseCode = TemperatureManager.getBaseCodeForResources(code);
-	
-	const path = (variant === 'model' ? 'models' : variant) + `/${baseCode}.glb`;
+
+	// For XFreeM objects: replace + with _ for file lookup
+	let filename = baseCode;
+	if (baseCode.startsWith('FEM')) {
+		filename = baseCode.replace(/\+/g, '_');
+	}
+
+	const path = (variant === 'model' ? 'models' : variant) + `/${filename}.glb`;
 	const url = state.supabase.storage.from(state.tenant).getPublicUrl(path).data.publicUrl;
-	
+
 	return (await state.loader.loadAsync(url)).scene;
 }
 

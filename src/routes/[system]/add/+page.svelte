@@ -827,10 +827,10 @@
 			{@const currentItem = page.state.chosenItem ? family.items.find(item => item.code === page.state.chosenItem) : null}
 			{@const isCurrentItemCurved = currentItem && currentItem.deg > 0}
 
-			{#if (family.system === "XNet" || family.system === "XFree S"|| family.system === "XTen" || family.system === "XFive") && !configShape?.angle && !isCurrentItemCurved}
+			{#if (family.system === "XNet" || family.system === "XFree S" || family.system === "XFreeM" || family.system === "XTen" || family.system === "XFive") && !configShape?.angle && !isCurrentItemCurved}
 				<ConfigLength
 					{family}
-					allowCustomLength={family.system !== "XFree S"}
+					allowCustomLength={family.system !== "XFree S" && family.system !== "XFreeM"}
 					disabled={configControlsDisabled}
 					onsubmit={(objectCode, length, isCustom) => {
 						if (configControlsDisabled) return;
@@ -839,7 +839,7 @@
 
 						// Systems that need color preservation when changing length
 						const supportsCustomLength = family.system === "XNet" || family.system === "XTen" || family.system === "XFive";
-						const hasDiscreteColorLengths = family.system === "XFree S";
+						const hasDiscreteColorLengths = family.system === "XFree S" || family.system === "XFreeM";
 						let finalObjectCode = objectCode;
 
 						if ((supportsCustomLength || hasDiscreteColorLengths) && page.state.chosenItem) {
@@ -915,7 +915,7 @@
 
 				const items = family.items
 					.filter((i) => (needsCurveConfig ? i.deg === angle && i.radius === radius : true))
-					// For discrete length systems (XFree S): filter by exact length
+					// For discrete length systems (XFree S, XFreeM): filter by exact length
 					// For custom length systems (XNet, XTen, XFive): don't filter by length (will be scaled)
 					.filter((i) => (needsLengthConfig && !supportsCustomLength ? i.len === configLength : true))
 					.filter((i) => i.color === color)

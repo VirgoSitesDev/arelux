@@ -332,7 +332,7 @@
 								/>
 								<div class="flex grow items-center justify-start py-4 pr-6">
 									<div class="flex flex-col">
-										<span class="mb-1">{item.code.split('+')[0]}</span>
+										<span class="mb-1">{data.system.toLowerCase() === 'xfreem' || data.system.toLowerCase() === 'xfree_m' ? item.code : item.code.split('+')[0]}</span>
 										<span class="text-sm"><DbText text={item.desc1} />,</span>
 										<span class="text-sm"><DbText text={item.desc2} /></span>
 									</div>

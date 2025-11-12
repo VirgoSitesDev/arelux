@@ -144,7 +144,7 @@ async function loadFamilies(
 				total_length = element.radius;
 			}
 
-			if (res[familycode].displayName.includes('sospensione')) {
+			if (res[familycode].displayName.includes('sospensione') && res[familycode].system.toLowerCase() !== 'xten') {
 				catalog[element.objectcode].askForLeds = true;
 			}
 
