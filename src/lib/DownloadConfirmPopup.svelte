@@ -34,10 +34,16 @@
 	let email: string = $state('');
 	let power = $state(getPowerBudget(page.data.catalog, get(objects)));
 	let sendingEmail = $state(false);
-	
+	let suspensionEnabled = $state(false);
+
 	const minDrivers = $derived(
 		power !== 0 ? Math.ceil(getTotalLength($objects, page.data.families) / 10000) : 0,
 	);
+
+	const isXFreeSystem = $derived.by(() => {
+		const currentSystem = page.data.system.toLowerCase().replace(' ', '_');
+		return currentSystem === 'xfree_s' || currentSystem === 'xfrees' || currentSystem === 'xfreem';
+	});
 
 	// Logica per sistemi multipli
 	let systems: Array<{
@@ -141,38 +147,30 @@
 
 	const availableDrivers = $derived.by(() => {
 		const currentSystem = page.data.system.toLowerCase().replace(' ', '_');
-		console.log(`SYSTEM DEBUG - Current system: ${currentSystem}, Original: ${page.data.system}`);
 
 		if (currentSystem === 'xfree_s' || currentSystem === 'xfrees') {
 			const filtered = drivers.filter((driver) => driver.code.startsWith('AT'));
-			console.log('SYSTEM DEBUG - XFREE system, available drivers:', filtered);
 			return filtered;
 		} else if (currentSystem === 'xnet') {
 			const filtered = drivers.filter((driver) => driver.code.startsWith('XNRS') || driver.code.startsWith('AT'));
-			console.log('SYSTEM DEBUG - XNET system, available drivers:', filtered);
 			return filtered;
 		} else if (currentSystem === 'xten') {
 			const filtered = drivers.filter((driver) => driver.code.startsWith('TNRS') || driver.code.startsWith('AT'));
-			console.log('SYSTEM DEBUG - XTEN system, available drivers:', filtered);
 			return filtered;
 		} else if (currentSystem === 'xfive') {
 			const filtered = drivers.filter((driver) => driver.code.startsWith('FVRS') || driver.code.startsWith('AT'));
-			console.log('SYSTEM DEBUG - XFIVE system, available drivers:', filtered);
 			return filtered;
 		}
 
-		console.log('SYSTEM DEBUG - Default case, all drivers available:', drivers);
 		return drivers;
 	});
 
 	const intrackDrivers = $derived.by(() => {
 		const filtered = availableDrivers.filter((driver) => !driver.code.startsWith('AT'));
-		console.log('DRIVERS DEBUG - INTRACK drivers:', filtered);
 		return filtered;
 	});
 	const remoteDrivers = $derived.by(() => {
 		const filtered = availableDrivers.filter((driver) => driver.code.startsWith('AT'));
-		console.log('DRIVERS DEBUG - REMOTE drivers:', filtered);
 		return filtered;
 	});
 
@@ -196,7 +194,6 @@
 			
 			const systemPower = getPowerBudget(page.data.catalog, systemObjects);
 			const systemId = `${$_("config.system")} ${systemGroups.length + 1}`;
-			console.log(`SYSTEM POWER DEBUG - ${systemId}: ${systemPower}W (${systemObjects.length} objects)`);
 
 			systemGroups.push({
 				id: systemId,
@@ -263,6 +260,95 @@
 		});
 	}
 
+	/**
+	 * Calculate arc length from angle and radius
+	 * Formula: L = (θ/360) × 2πr
+	 * @param angleInDegrees - The angle in degrees
+	 * @param radiusInMm - The radius in millimeters
+	 * @returns Arc length in millimeters
+	 */
+	function calculateArcLength(angleInDegrees: number, radiusInMm: number): number {
+		return (angleInDegrees / 360) * 2 * Math.PI * radiusInMm;
+	}
+
+	/**
+	 * Get the profile length from a SavedObject
+	 * @param obj - The saved object
+	 * @returns Length in millimeters
+	 */
+	function getProfileLength(obj: SavedObject): number {
+		// If length is directly specified, use it
+		if (obj.length) {
+			return obj.length;
+		}
+
+		// Otherwise, try to get it from the catalog entry
+		const catalogEntry = page.data.catalog[obj.code];
+		if (!catalogEntry) return 0;
+
+		// Find the family entry for this object
+		for (const family of Object.values(page.data.families)) {
+			const familyItem = family.items.find(item => item.code === obj.code);
+			if (familyItem) {
+				// If it's a curved profile, calculate arc length
+				if (familyItem.deg > 0 && familyItem.radius > 0) {
+					return calculateArcLength(familyItem.deg, familyItem.radius);
+				}
+				// Otherwise use the direct length
+				if (familyItem.len > 0) {
+					return familyItem.len;
+				}
+			}
+		}
+
+		return 0;
+	}
+
+	/**
+	 * Determine if an object is a profile (not a light, connector, etc.)
+	 * @param obj - The saved object
+	 * @returns true if it's a profile
+	 */
+	function isProfile(obj: SavedObject): boolean {
+		const catalogEntry = page.data.catalog[obj.code];
+		if (!catalogEntry) return false;
+		if (page.data.catalog[obj.code].system.toLowerCase() == "xfreem"
+		|| page.data.catalog[obj.code].system.toLowerCase() == "xfrees"
+		|| page.data.catalog[obj.code].system.toLowerCase() == "xfree_s") {
+			if (obj.code.includes("TC") && obj.code.includes("LC") && obj.code.includes("XC"))
+			{return false;}
+			else {return true;}
+		}
+
+		// Check if it has line junctions (characteristic of profiles)
+		return catalogEntry.line_juncts && catalogEntry.line_juncts.length > 0;
+	}
+
+	/**
+	 * Determine the predominant color in the configuration
+	 * @returns 'BK' for black, 'WH' for white
+	 */
+	function getPredominantColor(): string {
+		const colors: Record<string, number> = {};
+
+		for (const obj of $objects) {
+			// Find the family entry for this object
+			for (const family of Object.values(page.data.families)) {
+				const familyItem = family.items.find(item => item.code === obj.code);
+				if (familyItem && familyItem.color) {
+					const color = familyItem.color.toUpperCase();
+					colors[color] = (colors[color] || 0) + 1;
+				}
+			}
+		}
+
+		// Check if we have more black or white objects
+		const blackCount = (colors['MBK'] || 0) + (colors['BK'] || 0) + (colors['SBK'] || 0);
+		const whiteCount = (colors['MWH'] || 0) + (colors['WH'] || 0) + (colors['SWH'] || 0);
+
+		return blackCount >= whiteCount ? 'SBK' : 'SWH';
+	}
+
 	async function submit() {
 		if (email === '') return toast.error($_("invoice.invalidEmail"));
 
@@ -284,6 +370,41 @@
 
 		const items: { code: string; quantity: number; length?: number }[] = [];
 		for (const [code, quantity] of itemsMap) items.push({ code, quantity });
+
+		if (isXFreeSystem && suspensionEnabled) {
+			let totalSuspensionElements = 0;
+
+			for (const obj of $objects) {
+				if (isProfile(obj)) {
+					const profileLength = getProfileLength(obj);
+
+					if (profileLength > 0 && profileLength < 1000) {
+						totalSuspensionElements += 1;
+					} else if (profileLength >= 1000) {
+						totalSuspensionElements += 2;
+					}
+				}
+			}
+
+			if (totalSuspensionElements > 0) {
+				const color = getPredominantColor();
+				const currentSystem = page.data.system.toLowerCase().replace(' ', '_');
+
+				// Determine the correct suspension element code based on system
+				let suspensionPrefix = 'FEM50SK'; // Default for XFreeM
+				if (currentSystem === 'xfree_s' || currentSystem === 'xfrees') {
+					suspensionPrefix = 'FES35SK';
+				}
+
+				const suspensionCode = `${suspensionPrefix} ${color}`;
+				items.push({
+					code: suspensionCode,
+					quantity: totalSuspensionElements
+				});
+			} else {
+				console.log('SUSPENSION DEBUG - No suspension elements added (no profiles found or all have 0mm length)');
+			}
+		}
 
 		for (const system of systems) {
 			if (system.currentDriver && system.currentDriver !== 'none') {
@@ -389,12 +510,74 @@
 
 		<Button.Root
 			class={button({ class: 'mt-6 flex' })}
-			onclick={() =>
-				pushState('', { currentPage: (page.state.currentPage ?? 0) + 1 } as App.PageState)}
+			onclick={() => {
+				// After LEDs, go to suspension page for XFree systems, otherwise go to drivers
+				if (isXFreeSystem) {
+					pushState('', { currentPage: 1 } as App.PageState);
+				} else {
+					pushState('', { currentPage: 2 } as App.PageState);
+				}
+			}}
 		>
 			{$_("invoice.next")} <ArrowRight size={22} class="ml-1" />
 		</Button.Root>
-	{:else if page.state.currentPage === 1 || (!askForLeds && page.state.currentPage === undefined)}
+	{:else if (page.state.currentPage === 1 && isXFreeSystem) || (!askForLeds && isXFreeSystem && page.state.currentPage === undefined)}
+		<!-- Suspension page for XFreeS and XFreeM only -->
+		<span class="text-5xl font-semibold">{$_("config.selectOptions")}</span>
+
+		<span class="py-6 text-2xl font-light">
+			{$_("config.suspendConfiguration")}
+		</span>
+
+		<div class="grid grid-cols-2 gap-6 mt-6 max-w-2xl">
+			<button
+				class={cn(
+					'flex flex-col items-center justify-center gap-4 rounded-md border-2 p-6 text-left transition-colors',
+					suspensionEnabled && 'border-primary',
+				)}
+				onclick={() => {
+					suspensionEnabled = true;
+				}}
+			>
+				<span class="text-3xl font-medium">{$_("common.yes")}</span>
+				<span class="text-sm text-muted-foreground text-center">
+					{$_("config.suspensionElementsAdded")}
+				</span>
+			</button>
+
+			<button
+				class={cn(
+					'flex flex-col items-center justify-center gap-4 rounded-md border-2 p-6 text-left transition-colors',
+					!suspensionEnabled && 'border-primary',
+				)}
+				onclick={() => {
+					suspensionEnabled = false;
+				}}
+			>
+				<span class="text-3xl font-medium">{$_("common.no")}</span>
+				<span class="text-sm text-muted-foreground text-center">
+					{$_("config.configurationNotSuspended")}
+				</span>
+			</button>
+		</div>
+
+		<div class="mt-6 flex gap-5">
+			{#if askForLeds}
+				<Button.Root
+					class={button({ class: 'flex', color: 'secondary' })}
+					onclick={() => history.back()}
+				>
+					<ArrowLeft size={22} class="mr-1" /> {$_("common.back")}
+				</Button.Root>
+			{/if}
+			<Button.Root
+				class={button({ class: 'flex' })}
+				onclick={() => pushState('', { currentPage: 2 } as App.PageState)}
+			>
+				{$_("invoice.next")} <ArrowRight size={22} class="ml-1" />
+			</Button.Root>
+		</div>
+	{:else if page.state.currentPage === 2 || (!askForLeds && !isXFreeSystem && page.state.currentPage === undefined)}
 		<span class="text-5xl font-semibold">{$_("config.selectDrivers")}</span>
 
 		<div class="max-h-[70vh] overflow-y-auto">
@@ -600,17 +783,17 @@
 					const hasIntrack = systems.some(s => s.currentDriver && !s.currentDriver.startsWith('AT') && s.currentDriver !== 'none');
 
 					if (allIntrackOrNone) {
-						pushState('', { currentPage: 4 } as App.PageState);
+						pushState('', { currentPage: 5 } as App.PageState);
 					}
 					else if (hasIntrack) {
-						pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState);
+						pushState('', { currentPage: 3 } as App.PageState);
 					}
 					else {
-						if (currentSystem === 'xfree_s' || currentSystem === 'xfrees') {
-							pushState('', { currentPage: 4 } as App.PageState);
+						if (currentSystem === 'xfree_s' || currentSystem === 'xfrees' || currentSystem === 'xfreem') {
+							pushState('', { currentPage: 5 } as App.PageState);
 						}
 						else {
-							pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState);
+							pushState('', { currentPage: 3 } as App.PageState);
 						}
 					}
 				}}
@@ -618,7 +801,7 @@
 				{$_("invoice.next")} <ArrowRight size={22} class="ml-1" />
 			</Button.Root>
 		</div>
-		{:else if page.state.currentPage === 2}
+		{:else if page.state.currentPage === 3}
 			<span class="text-5xl font-semibold">{$_("invoice.heads")}</span>
 			<span class="py-6 text-2xl font-light">
 				{$_("config.totalPower")}: {power}W.
@@ -724,17 +907,17 @@
 					onclick={() => {
 						// Se non ci sono sistemi REMOTE, vai direttamente all'email
 						if (systems.every(s => s.currentDriver === 'none' || (s.currentDriver && !s.currentDriver.startsWith('AT')))) {
-							pushState('', { currentPage: 4 } as App.PageState);
+							pushState('', { currentPage: 5 } as App.PageState);
 						} else {
-							pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState);
+							pushState('', { currentPage: 4 } as App.PageState);
 						}
 					}}
 				>
 					{$_("invoice.next")} <ArrowRight size={22} class="ml-1" />
 				</Button.Root>
 			</div>
-		
-			{:else if page.state.currentPage === 3}
+
+			{:else if page.state.currentPage === 4}
 			<span class="mb-6 text-5xl font-semibold">{$_("invoice.box")}</span>
 		
 			<!-- Mostra solo i sistemi che NON hanno driver INTRACK e NON hanno scelto "none" -->
@@ -835,12 +1018,12 @@
 					class={button({ class: 'flex' })}
 					disabled={systems.filter(s => s.currentDriver && s.currentDriver.startsWith('AT')).some(s => s.currentBox === null)}
 					onclick={() =>
-						pushState('', { currentPage: (page.state.currentPage ?? 1) + 1 } as App.PageState)}
+						pushState('', { currentPage: 5 } as App.PageState)}
 				>
 					{$_("invoice.next")} <ArrowRight size={22} class="ml-1" />
 				</Button.Root>
 			</div>
-	{:else if page.state.currentPage === 4}
+	{:else if page.state.currentPage === 5}
 		<span class="text-5xl font-semibold">{$_("invoice.thankYou")}</span>
 
 		<span class="pt-6 text-2xl font-light">

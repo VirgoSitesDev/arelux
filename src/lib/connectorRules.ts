@@ -28,6 +28,7 @@ export function getRequiredConnector4Family(
     if (obj1.system === "XNet" && obj2.system === "XNet") return getRequiredConnectorXnet(obj1, obj2);
     if (obj1.system === "XFive" && obj2.system === "XFive") return getRequiredConnectorXFive(obj1, obj2);
     if (obj1.system === "XFree S" && obj2.system === "XFree S") return "FES35CK";
+    if (obj1.system === "XFreeM" && obj2.system === "XFreeM") return "FEM50CK";
 
     return null;
 }

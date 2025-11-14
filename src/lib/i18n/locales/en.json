@@ -17,6 +17,8 @@
     "success": "Success",
     "warning": "Warning",
     "info": "Information",
+    "yes": "Yes",
+    "no": "No",
     "confirmExit": "Confirm Exit",
     "confirmExitMessage": "Are you sure you want to go back? You will lose the current configuration."
   },
@@ -63,7 +65,11 @@
     "noBoxRequired": "No box required",
     "allSystemsIntrackOrNone": "All systems use INTRACK drivers or no driver - no power supply required",
     "allSystemsNoBox": "All systems use INTRACK drivers or no driver - no box required",
-    "autoConnector": "Auto connector"
+    "autoConnector": "Auto connector",
+    "selectOptions": "Select your options",
+    "suspendConfiguration": "Do you want to make the configuration suspended?",
+    "suspensionElementsAdded": "Suspension elements will be added to the configuration",
+    "configurationNotSuspended": "The configuration will not be suspended"
   },
   "invoice": {
     "title": "Quote",

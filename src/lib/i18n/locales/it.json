@@ -17,6 +17,8 @@
     "success": "Successo",
     "warning": "Attenzione",
     "info": "Informazione",
+    "yes": "Sì",
+    "no": "No",
     "confirmExit": "Conferma uscita",
     "confirmExitMessage": "Sei sicuro di voler tornare indietro? Perderai la configurazione attuale."
   },
@@ -63,7 +65,11 @@
     "noBoxRequired": "Nessuna scatola necessaria",
     "allSystemsIntrackOrNone": "Tutti i sistemi utilizzano driver INTRACK o nessun driver - nessun alimentatore necessario",
     "allSystemsNoBox": "Tutti i sistemi utilizzano driver INTRACK o nessun driver - nessuna scatola necessaria",
-    "autoConnector": "Connettore automatico"
+    "autoConnector": "Connettore automatico",
+    "selectOptions": "Seleziona le tue opzioni",
+    "suspendConfiguration": "Vuoi rendere la configurazione sospesa?",
+    "suspensionElementsAdded": "Gli elementi di sospensione saranno aggiunti alla configurazione",
+    "configurationNotSuspended": "La configurazione non sarà sospesa"
   },
   "invoice": {
     "title": "Preventivo",
