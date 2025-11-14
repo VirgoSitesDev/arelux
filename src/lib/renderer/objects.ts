@@ -451,9 +451,33 @@ export class TemporaryObject {
 	attachLine(other: TemporaryObject, pos: Vector3Like, force: boolean = false): string {
 		if (!this.mesh || !other.mesh)
 			throw new Error('Can only attach if both objects have a mesh attached');
-	
+
 		if (!force && other.#junctions.concat(other.#lineJunctions).some((j) => j !== null))
 			throw new Error('Can only attach if not already attached to something');
+
+		// XTen system validation: TNRS41 and TNRS42 can only be attached to surface and suspension profiles
+		const otherCode = other.getCatalogEntry().code;
+		const thisCode = this.getCatalogEntry().code;
+		const thisSystem = this.getCatalogEntry().system;
+
+		if (thisSystem === 'XTen' && (otherCode.startsWith('TNRS41') || otherCode.startsWith('TNRS42'))) {
+			// Find the family of this profile
+			let profileFamily = '';
+			for (const family of Object.values(this.#state.families)) {
+				const familyItem = family.items.find(item => item.code === thisCode);
+				if (familyItem) {
+					profileFamily = family.displayName.toLowerCase();
+					break;
+				}
+			}
+
+			// Check if it's a recessed profile
+			const isRecessedProfile = profileFamily.includes('incasso') && !profileFamily.includes('sospensione');
+
+			if (isRecessedProfile) {
+				throw new Error('TNRS41 and TNRS42 lights can only be installed on surface and suspension profiles, not on recessed profiles');
+			}
+		}
 	
 		const j1 = this.#catalogEntry.line_juncts[0];
 		const j2 = other.#catalogEntry.juncts[other.#junctions.indexOf(null)];

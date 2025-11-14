@@ -28,6 +28,7 @@
 	import { _ } from 'svelte-i18n';
 	import DbText from '$lib/i18n/DbText.svelte';
 	import { object } from 'zod';
+	import { toast } from 'svelte-sonner';
 
 	function hasTemperatureVariants(family: Family, itemCode?: string): boolean {
 		const enhancedFamily = TemperatureManager.getEnhancedFamily(family, enhancedCatalog);
@@ -276,14 +277,24 @@
 				}
 
 				if (page.state.reference) {
-					if (page.state.reference.typ === 'junction') {
-						renderer?.getObjectById(page.state.reference.id)?.attach(
-							o, 
-							undefined,
-							page.state.reference.junction
-						);
-					} else {
-						renderer?.getObjectById(page.state.reference.id)?.attachLine(o, page.state.reference.pos);
+					try {
+						if (page.state.reference.typ === 'junction') {
+							renderer?.getObjectById(page.state.reference.id)?.attach(
+								o,
+								undefined,
+								page.state.reference.junction
+							);
+						} else {
+							renderer?.getObjectById(page.state.reference.id)?.attachLine(o, page.state.reference.pos);
+						}
+					} catch (error) {
+						// Remove the object that couldn't be attached
+						if (renderer) renderer.removeObject(o);
+						// Show error to user
+						toast.error(error instanceof Error ? error.message : 'Error attaching object');
+						modelLoading = false;
+						modelLoaded = false;
+						return;
 					}
 				}
 
@@ -723,18 +734,25 @@
 										});
 									} else if (family.hasModel) {
 										renderer!.addObject(item.code).then((object) => {
-											if (reference.typ === 'junction') {
-												renderer!.getObjectById(reference.id)?.attach(object);
-											} else {
-												renderer!.getObjectById(reference.id)?.attachLine(object, reference.pos);
+											try {
+												if (reference.typ === 'junction') {
+													renderer!.getObjectById(reference.id)?.attach(object);
+												} else {
+													renderer!.getObjectById(reference.id)?.attachLine(object, reference.pos);
+												}
+
+												finishEdit(renderer!, object, null, {
+													chosenFamily: familyForItem,
+													chosenItem: item.code,
+													reference,
+													length: item.len > 0 ? item.len : undefined
+												});
+											} catch (error) {
+												// Remove the object that couldn't be attached
+												renderer!.removeObject(object);
+												// Show error to user
+												toast.error(error instanceof Error ? error.message : 'Error attaching object');
 											}
-											
-											finishEdit(renderer!, object, null, {
-												chosenFamily: familyForItem,
-												chosenItem: item.code,
-												reference,
-												length: item.len > 0 ? item.len : undefined
-											});
 										});
 									}
 								});
